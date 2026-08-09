@@ -32,7 +32,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create scanner
-	s := scanner.New(cfg.Scanning.MinScanInterval)
+	s := scanner.New(cfg.Scanning.MinScanInterval, cfg.Scanning.EnableServiceDetection)
 
 	// Determine networks to scan
 	var networks []string
@@ -40,7 +40,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 || args[0] == "" {
 		// Scan first detected network
 		detected, err := network.DetectNetworks()
-		detected = network.WithConfigured(detected, cfg.Scanning.Networks)
+		detected = network.WithConfigured(detected, network.Filter{Configured: cfg.Scanning.Networks, Excluded: cfg.Scanning.ExcludeNetworks, OnlyConfigured: cfg.Scanning.OnlyConfiguredNetworks})
 		if err != nil {
 			return fmt.Errorf("failed to detect networks: %w", err)
 		}
@@ -60,7 +60,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	} else if args[0] == "all" {
 		// Scan all detected networks
 		detected, err := network.DetectNetworks()
-		detected = network.WithConfigured(detected, cfg.Scanning.Networks)
+		detected = network.WithConfigured(detected, network.Filter{Configured: cfg.Scanning.Networks, Excluded: cfg.Scanning.ExcludeNetworks, OnlyConfigured: cfg.Scanning.OnlyConfiguredNetworks})
 		if err != nil {
 			return fmt.Errorf("failed to detect networks: %w", err)
 		}
@@ -153,6 +153,27 @@ func runScan(cmd *cobra.Command, args []string) error {
 					fmt.Println("  sudo orangutan scan")
 				}
 				fmt.Println()
+			}
+		}
+	}
+
+	// When scanning everything, also pick up IPv6 neighbors and mDNS
+	// announcements, which cannot be reached by sweeping a range. Both merge as
+	// secondary sources so they enrich rather than overwrite.
+	if len(args) > 0 && args[0] == "all" {
+		ctx := context.Background()
+		if ipv6 := s.DiscoverIPv6(ctx); len(ipv6) > 0 {
+			if err := store.MergeSupplemental(ipv6); err != nil {
+				fmt.Fprintf(os.Stderr, "Error saving IPv6 neighbors: %v\n", err)
+			} else {
+				fmt.Printf("Found %d IPv6 neighbor(s)\n", len(ipv6))
+			}
+		}
+		if mdns := s.DiscoverMDNS(ctx); len(mdns) > 0 {
+			if err := store.MergeSupplemental(mdns); err != nil {
+				fmt.Fprintf(os.Stderr, "Error saving mDNS devices: %v\n", err)
+			} else {
+				fmt.Printf("Found %d mDNS device(s)\n", len(mdns))
 			}
 		}
 	}

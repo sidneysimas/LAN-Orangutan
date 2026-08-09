@@ -92,3 +92,27 @@ func TestSyncBufferConcurrentWrites(t *testing.T) {
 		t.Errorf("expected 1000 bytes written, got %d", len(b.String()))
 	}
 }
+
+func TestExtractLoginURL(t *testing.T) {
+	// The URL appears in the middle of multi-line output; extraction still finds
+	// it and confirms the host with a real parse.
+	out := "\nTo authenticate, visit:\n\n\thttps://login.tailscale.com/a/1a2b3c4d5e6f\n\n"
+	if got := extractLoginURL(out); got != "https://login.tailscale.com/a/1a2b3c4d5e6f" {
+		t.Errorf("expected the login URL, got %q", got)
+	}
+
+	// No URL in the output.
+	if got := extractLoginURL("Success.\n"); got != "" {
+		t.Errorf("expected empty, got %q", got)
+	}
+
+	// A bare hostname without https:// is not a URL and must not be returned.
+	if got := extractLoginURL("see login.tailscale.com/foo for details"); got != "" {
+		t.Errorf("a bare hostname is not a login URL, got %q", got)
+	}
+
+	// A valid URL with a query is accepted; the host parse pins it to Tailscale.
+	if got := extractLoginURL("https://login.tailscale.com/path?q=1 rest"); got != "https://login.tailscale.com/path?q=1" {
+		t.Errorf("valid URL rejected, got %q", got)
+	}
+}

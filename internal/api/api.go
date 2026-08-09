@@ -29,6 +29,13 @@ type Handler struct {
 	// scan runs at a time.
 	jobMu sync.Mutex
 	job   *scanJob
+
+	// scanCtx is the parent of every scan job's context, so cancelling it at
+	// shutdown stops any scan in flight. scanWG tracks the running scan
+	// goroutines so shutdown can wait for them to unwind rather than abandon a
+	// scan mid-write.
+	scanCtx context.Context
+	scanWG  sync.WaitGroup
 }
 
 // NewHandler creates a new API handler
@@ -36,9 +43,20 @@ func NewHandler(store *storage.Storage, cfg *config.Config) *Handler {
 	return &Handler{
 		store:   store,
 		cfg:     cfg,
-		scanner: scanner.New(cfg.Scanning.MinScanInterval),
+		scanner: scanner.New(cfg.Scanning.MinScanInterval, cfg.Scanning.EnableServiceDetection),
+		scanCtx: context.Background(),
 	}
 }
+
+// SetScanContext sets the parent context for all scan jobs. Cancelling it stops
+// any scan in flight, so call it with the server's shutdown context before
+// starting the server.
+func (h *Handler) SetScanContext(ctx context.Context) { h.scanCtx = ctx }
+
+// WaitForScans blocks until any running scan goroutine has returned. Call it at
+// shutdown, after the scan context has been cancelled, so a scan is not left
+// half-written.
+func (h *Handler) WaitForScans() { h.scanWG.Wait() }
 
 // ServeHTTP implements http.Handler
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -75,6 +93,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleScanProgress(w, r)
 	case path == "scan/cancel":
 		h.handleScanCancel(w, r)
+	case path == "scan/continuous":
+		h.handleScanContinuous(w, r)
 	case path == "tailscale":
 		h.handleTailscale(w, r)
 	case path == "tailscale/connect":
@@ -219,7 +239,7 @@ func (h *Handler) handleNetworks(w http.ResponseWriter, r *http.Request) {
 		h.error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	h.success(w, network.WithConfigured(networks, h.cfg.Scanning.Networks))
+	h.success(w, network.WithConfigured(networks, network.Filter{Configured: h.cfg.Scanning.Networks, Excluded: h.cfg.Scanning.ExcludeNetworks, OnlyConfigured: h.cfg.Scanning.OnlyConfiguredNetworks}))
 }
 
 // handleScan handles GET /api/scan
@@ -308,11 +328,11 @@ type scanAllResult struct {
 // so one bad interface cannot mask results from the others.
 func (h *Handler) scanAllNetworks(w http.ResponseWriter, r *http.Request) {
 	detected, err := network.DetectNetworks()
-	detected = network.WithConfigured(detected, h.cfg.Scanning.Networks)
 	if err != nil {
 		h.error(w, http.StatusInternalServerError, "failed to detect networks: "+err.Error())
 		return
 	}
+	detected = network.WithConfigured(detected, network.Filter{Configured: h.cfg.Scanning.Networks, Excluded: h.cfg.Scanning.ExcludeNetworks, OnlyConfigured: h.cfg.Scanning.OnlyConfiguredNetworks})
 	if len(detected) == 0 {
 		h.error(w, http.StatusNotFound, "no networks detected")
 		return
@@ -351,6 +371,29 @@ func (h *Handler) scanAllNetworks(w http.ResponseWriter, r *http.Request) {
 		result.DeviceCount += scan.DeviceCount
 	}
 
+	// Supplemental sources, once for the whole request. IPv6 neighbors (an IPv6
+	// subnet cannot be swept) enrich devices by MAC rather than being listed per
+	// address, so they go through MergeIPv6Neighbors. mDNS announcements merge as
+	// an ordinary secondary source.
+	if ipv6 := h.scanner.DiscoverIPv6(r.Context()); len(ipv6) > 0 {
+		if err := h.store.MergeIPv6Neighbors(ipv6); err == nil {
+			result.Networks = append(result.Networks, networkScanSummary{
+				Network: "IPv6 neighbors", Status: "scanned", DeviceCount: len(ipv6),
+			})
+			result.ScannedCount++
+			result.DeviceCount += len(ipv6)
+		}
+	}
+	if mdns := h.scanner.DiscoverMDNS(r.Context()); len(mdns) > 0 {
+		if err := h.store.MergeSupplemental(mdns); err == nil {
+			result.Networks = append(result.Networks, networkScanSummary{
+				Network: "mDNS", Status: "scanned", DeviceCount: len(mdns),
+			})
+			result.ScannedCount++
+			result.DeviceCount += len(mdns)
+		}
+	}
+
 	// Only a request where nothing at all could be scanned counts as a failure.
 	result.Success = result.ScannedCount > 0
 	h.success(w, result)
@@ -367,10 +410,10 @@ func (h *Handler) resolveScanTargets(cidr string) ([]string, error) {
 	}
 
 	detected, err := network.DetectNetworks()
-	detected = network.WithConfigured(detected, h.cfg.Scanning.Networks)
 	if err != nil {
 		return nil, errors.New("failed to detect networks: " + err.Error())
 	}
+	detected = network.WithConfigured(detected, network.Filter{Configured: h.cfg.Scanning.Networks, Excluded: h.cfg.Scanning.ExcludeNetworks, OnlyConfigured: h.cfg.Scanning.OnlyConfiguredNetworks})
 	if len(detected) == 0 {
 		return nil, errors.New("no networks detected")
 	}
@@ -408,11 +451,16 @@ func (h *Handler) handleScanStart(w http.ResponseWriter, r *http.Request) {
 	defer h.jobMu.Unlock()
 
 	if h.job != nil && h.job.isRunning() {
-		h.error(w, http.StatusConflict, "a scan is already running")
+		// A scan is already running, most often the background scanner. Rather
+		// than rejecting the user's click with a 409, attach to that scan and
+		// adopt it as user-initiated so the progress overlay follows it and the
+		// user gets the fresh results it is already producing.
+		h.job.adopt()
+		h.success(w, h.job.snapshot())
 		return
 	}
 
-	h.job = h.startScanJob(networks)
+	h.job = h.startScanJob(networks, false)
 	h.success(w, h.job.snapshot())
 }
 
@@ -452,6 +500,39 @@ func (h *Handler) handleScanCancel(w http.ResponseWriter, r *http.Request) {
 
 	job.cancel()
 	h.success(w, map[string]string{"message": "scan cancelled"})
+}
+
+// handleScanContinuous reports (GET) or sets (POST) whether the server keeps
+// re-scanning the networks on its own. The choice is persisted so it survives a
+// restart, letting a user scan once and sit on the snapshot without editing the
+// config or restarting.
+func (h *Handler) handleScanContinuous(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.success(w, map[string]bool{"enabled": h.store.ContinuousScanEnabled(h.cfg.Scanning.ContinuousScan)})
+	case http.MethodPost:
+		var body struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			h.error(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		if err := h.store.SetContinuousScan(body.Enabled); err != nil {
+			h.error(w, http.StatusInternalServerError, "could not save setting: "+err.Error())
+			return
+		}
+		// Turning it on kicks off a scan right away, so the user sees fresh
+		// results instead of waiting up to a full interval for the next tick.
+		// Runs in the background; the one-scan-at-a-time guard and the
+		// per-network rate limit keep it from piling up or hammering.
+		if body.Enabled {
+			go h.runBackgroundScan()
+		}
+		h.success(w, map[string]bool{"enabled": body.Enabled})
+	default:
+		h.error(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
 }
 
 // scanNetwork scans a single network and merges the results into storage.

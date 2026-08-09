@@ -4,6 +4,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"sync"
@@ -46,6 +47,14 @@ func New(devicesFile, stateFile string) (*Storage, error) {
 	}
 	if err := s.loadState(); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("could not read the scan history at %s: %w", stateFile, err)
+	}
+
+	// One-time cleanup: drop phantom devices created from noisy IPv6 neighbour
+	// data (link-local and privacy addresses) before that path was fixed, so an
+	// upgraded install heals down to the real device count. Safe here because
+	// New runs before the store is shared with any other goroutine.
+	if s.pruneEphemeralIPv6Locked() {
+		_ = s.saveDevices()
 	}
 
 	return s, nil
@@ -251,21 +260,245 @@ func (s *Storage) MergeDevices(discovered []types.Device) error {
 	now := time.Now()
 	for _, d := range discovered {
 		if existing, ok := s.devices[d.IP]; ok {
-			// Update existing device, preserve user data
-			existing.MAC = d.MAC
-			existing.Hostname = d.Hostname
-			existing.Vendor = d.Vendor
+			// A primary scan is authoritative. It replaces the probe fields
+			// (WebUI and Risks reflect the latest probe, so a fixed risk stops
+			// showing), but it does not wipe an identity field it happened to
+			// gather less of this time: a scan without sudo has no MAC, and a
+			// device that did not resolve this time keeps its known name.
+			if d.MAC != "" {
+				existing.MAC = d.MAC
+			}
+			if d.Hostname != "" {
+				existing.Hostname = d.Hostname
+			}
+			if d.Vendor != "" {
+				existing.Vendor = d.Vendor
+			}
+			if d.Type != "" {
+				existing.Type = d.Type
+			}
+			if d.ResponseTime != nil {
+				existing.ResponseTime = d.ResponseTime
+			}
+			existing.WebUI = d.WebUI
+			existing.Risks = d.Risks
 			existing.LastSeen = now
-			existing.ResponseTime = d.ResponseTime
 		} else {
-			// New device
-			d.FirstSeen = now
-			d.LastSeen = now
-			s.devices[d.IP] = &d
+			dev := d
+			s.addNewDeviceLocked(&dev, now)
 		}
 	}
 
 	return s.saveDevices()
+}
+
+// MergeSupplemental folds in devices from a secondary source, such as mDNS or
+// IPv6 neighbor discovery, that carries only part of a device's picture. It
+// fills gaps on a known device but never clobbers what the primary scan found,
+// and never touches the probe fields, so an mDNS answer with no MAC cannot erase
+// a MAC the scan discovered, nor clear a web or risk flag.
+func (s *Storage) MergeSupplemental(discovered []types.Device) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+	for _, d := range discovered {
+		// A link-local IPv6 address is never a device (same reasoning as
+		// MergeIPv6Neighbors); skip it so a supplemental source like mDNS cannot
+		// create a phantom keyed by fe80::.
+		if parsed := net.ParseIP(d.IP); parsed != nil && parsed.To4() == nil && parsed.IsLinkLocalUnicast() {
+			continue
+		}
+		if existing, ok := s.devices[d.IP]; ok {
+			if existing.MAC == "" && d.MAC != "" {
+				existing.MAC = d.MAC
+			}
+			if existing.Hostname == "" && d.Hostname != "" {
+				existing.Hostname = d.Hostname
+			}
+			if existing.Vendor == "" && d.Vendor != "" {
+				existing.Vendor = d.Vendor
+			}
+			if existing.Type == "" && d.Type != "" {
+				existing.Type = d.Type
+			}
+			existing.LastSeen = now
+		} else {
+			dev := d
+			s.addNewDeviceLocked(&dev, now)
+		}
+	}
+
+	return s.saveDevices()
+}
+
+// MergeIPv6Neighbors folds IPv6 neighbour-discovery results into the inventory.
+// The IPv6 neighbour cache is noisy: it is full of link-local and rotating
+// privacy addresses, each often behind a randomised MAC, so a device sighted
+// over IPv6 can look brand new every time. Using it to create a device per
+// address is what produces hundreds of phantom entries. Instead it ENRICHES a
+// device already found by the reliable IPv4/ARP scan, matched by MAC across
+// address families. A new device is created only for a routable address whose
+// MAC is a real (universally-administered) hardware address not already known --
+// a genuine IPv6-only device. Link-local, and randomised-MAC addresses with no
+// match, are dropped, so privacy addresses cannot pile up.
+func (s *Storage) MergeIPv6Neighbors(discovered []types.Device) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+	changed := false
+	for _, d := range discovered {
+		parsed := net.ParseIP(d.IP)
+		if parsed == nil || parsed.To4() != nil || parsed.IsLinkLocalUnicast() || d.MAC == "" {
+			continue // not a routable IPv6 address we can attribute
+		}
+
+		// Enrich the device we already know by this MAC rather than creating a
+		// second entry for its IPv6 address.
+		if existing := s.findAnyByMACLocked(d.MAC); existing != nil {
+			if existing.Hostname == "" && d.Hostname != "" {
+				existing.Hostname = d.Hostname
+			}
+			if existing.Vendor == "" && d.Vendor != "" {
+				existing.Vendor = d.Vendor
+			}
+			if existing.Type == "" && d.Type != "" {
+				existing.Type = d.Type
+			}
+			existing.LastSeen = now
+			changed = true
+			continue
+		}
+
+		// No match: create a device only for a real hardware MAC (a genuine
+		// IPv6-only device). A randomised MAC with no match is a privacy
+		// address, not a device -- skip it so it cannot accumulate.
+		if !isRandomizedMAC(d.MAC) {
+			dev := d
+			s.addNewDeviceLocked(&dev, now)
+			changed = true
+		}
+	}
+
+	if changed {
+		return s.saveDevices()
+	}
+	return nil
+}
+
+// addNewDeviceLocked stores a device newly seen at its IP. If one with the same
+// MAC exists at another IP in the same address family, it moved: its identity
+// and user data carry across and the change is recorded. Callers hold s.mu.
+func (s *Storage) addNewDeviceLocked(d *types.Device, now time.Time) {
+	if d.MAC != "" {
+		if oldIP, old := s.findByMACLocked(d.MAC, d.IP); old != nil {
+			d.Label = old.Label
+			d.Notes = old.Notes
+			d.Group = old.Group
+			d.FirstSeen = old.FirstSeen
+			if d.Type == "" {
+				d.Type = old.Type
+			}
+			d.AddressHistory = appendAddressChange(old.AddressHistory, oldIP, now)
+			delete(s.devices, oldIP)
+		}
+	}
+	if d.FirstSeen.IsZero() {
+		d.FirstSeen = now
+	}
+	d.LastSeen = now
+	s.devices[d.IP] = d
+}
+
+// findByMACLocked returns the IP and device of a stored device with the given
+// MAC at an IP other than excludeIP, or "" and nil if there is none. Callers
+// must hold s.mu.
+//
+// The match is confined to the same address family. A dual-stack device has an
+// IPv4 and an IPv6 address at once, and those are not a "move" from one to the
+// other: matching across families would wrongly collapse the two into one when
+// IPv6 discovery runs alongside an IPv4 scan.
+func (s *Storage) findByMACLocked(mac, excludeIP string) (string, *types.Device) {
+	wantV4 := isIPv4(excludeIP)
+	for ip, dev := range s.devices {
+		if ip != excludeIP && dev.MAC == mac && isIPv4(ip) == wantV4 {
+			return ip, dev
+		}
+	}
+	return "", nil
+}
+
+func isIPv4(ip string) bool {
+	parsed := net.ParseIP(ip)
+	return parsed != nil && parsed.To4() != nil
+}
+
+// findAnyByMACLocked returns any stored device with the given MAC, regardless of
+// address family, or nil. Used to attach an IPv6 sighting to the device already
+// known from the IPv4 scan. Callers hold s.mu.
+func (s *Storage) findAnyByMACLocked(mac string) *types.Device {
+	if mac == "" {
+		return nil
+	}
+	for _, dev := range s.devices {
+		if dev.MAC == mac {
+			return dev
+		}
+	}
+	return nil
+}
+
+// isRandomizedMAC reports whether a MAC is locally administered (the
+// second-least-significant bit of the first octet is set), which is how phones
+// and laptops mark privacy-randomised addresses. Such a MAC cannot reliably
+// identify a device across sightings.
+func isRandomizedMAC(mac string) bool {
+	hw, err := net.ParseMAC(mac)
+	if err != nil || len(hw) == 0 {
+		return false
+	}
+	return hw[0]&0x02 != 0
+}
+
+// pruneEphemeralIPv6Locked removes phantom devices that noisy IPv6 neighbour
+// data created before that path was fixed: link-local addresses, and privacy
+// (randomised-MAC) IPv6 addresses, which are not real, persistent devices. It
+// runs on load so existing installs heal down to the real device count; once
+// healed it is a no-op, because no code path creates such entries any more.
+//
+// It never removes a device the user has curated (a label, notes or a group),
+// so a real device that happens to be keyed by such an address keeps its data
+// instead of being wiped and re-created on every restart. Returns whether
+// anything was removed. Callers hold s.mu.
+func (s *Storage) pruneEphemeralIPv6Locked() bool {
+	removed := false
+	for ip, dev := range s.devices {
+		parsed := net.ParseIP(ip)
+		if parsed == nil || parsed.To4() != nil {
+			continue // not IPv6
+		}
+		if dev.Label != "" || dev.Notes != "" || dev.Group != "" {
+			continue // curated by the user: never auto-delete
+		}
+		if parsed.IsLinkLocalUnicast() || (dev.MAC != "" && isRandomizedMAC(dev.MAC)) {
+			delete(s.devices, ip)
+			removed = true
+		}
+	}
+	return removed
+}
+
+// maxAddressHistory bounds how many previous addresses a device keeps, so the
+// history cannot grow without limit on a device that changes IP often.
+const maxAddressHistory = 10
+
+func appendAddressChange(history []types.AddressChange, ip string, at time.Time) []types.AddressChange {
+	history = append(history, types.AddressChange{IP: ip, ChangedAt: at})
+	if len(history) > maxAddressHistory {
+		history = history[len(history)-maxAddressHistory:]
+	}
+	return history
 }
 
 // GetLastScan returns the last scan time for a network
@@ -321,6 +554,27 @@ func (s *Storage) SetLastDuration(network string, seconds float64) error {
 		s.state.LastDuration = make(map[string]float64)
 	}
 	s.state.LastDuration[network] = seconds
+	return s.saveState()
+}
+
+// ContinuousScanEnabled reports whether background scanning should run. It
+// honours a runtime override the user set from the UI, and falls back to the
+// configured default when no override has been saved.
+func (s *Storage) ContinuousScanEnabled(configDefault bool) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.state.ContinuousScan != nil {
+		return *s.state.ContinuousScan
+	}
+	return configDefault
+}
+
+// SetContinuousScan saves the user's runtime override for background scanning so
+// it survives a restart.
+func (s *Storage) SetContinuousScan(enabled bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.state.ContinuousScan = &enabled
 	return s.saveState()
 }
 

@@ -5,16 +5,39 @@ import "time"
 
 // Device represents a discovered network device
 type Device struct {
-	IP           string    `json:"ip"`
-	MAC          string    `json:"mac"`
-	Hostname     string    `json:"hostname"`
-	Vendor       string    `json:"vendor"`
+	IP       string `json:"ip"`
+	MAC      string `json:"mac"`
+	Hostname string `json:"hostname"`
+	Vendor   string `json:"vendor"`
+	// Type is the inferred device kind (Phone, Printer, TV, and so on), or ""
+	// when it could not be determined. It is derived at scan time from the
+	// vendor, the hostname and, when service detection is on, the open ports.
+	Type string `json:"type,omitempty"`
+	// WebUI is true when the device answered on a common web port during an
+	// opt-in service probe, meaning it likely serves a dashboard or admin page.
+	// Always false when service detection is off.
+	WebUI bool `json:"web_ui,omitempty"`
+	// Risks lists security concerns found during an opt-in service probe, such as
+	// an exposed unencrypted service. Empty when nothing notable was found or the
+	// probe is off.
+	Risks        []string  `json:"risks,omitempty"`
 	Label        string    `json:"label"`
 	Notes        string    `json:"notes"`
 	Group        string    `json:"group"`
 	FirstSeen    time.Time `json:"first_seen"`
 	LastSeen     time.Time `json:"last_seen"`
 	ResponseTime *float64  `json:"response_time,omitempty"`
+
+	// AddressHistory lists earlier IPs this device (matched by its MAC) was seen
+	// at, oldest first. Empty for a device that has never changed address.
+	AddressHistory []AddressChange `json:"address_history,omitempty"`
+}
+
+// AddressChange records an IP a device was previously seen at, and when it moved
+// away from it, so the dashboard can show that a device has changed address.
+type AddressChange struct {
+	IP        string    `json:"ip"`
+	ChangedAt time.Time `json:"changed_at"`
 }
 
 // IsOnline returns true if the device was seen within the last hour
@@ -43,6 +66,10 @@ type ScanState struct {
 	// LastDuration records how long the previous scan of each network took,
 	// in seconds, so the UI can estimate progress for subsequent scans.
 	LastDuration map[string]float64 `json:"last_duration,omitempty"`
+	// ContinuousScan is a runtime override for background scanning, set from the
+	// UI. nil means "use the configured default"; a set value wins over config
+	// so the user's choice survives a restart.
+	ContinuousScan *bool `json:"continuous_scan,omitempty"`
 }
 
 // ScanResult represents the outcome of a network scan

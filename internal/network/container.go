@@ -22,12 +22,42 @@ func InContainer() bool {
 	return false
 }
 
-// dockerPrivateRanges are the address ranges a container sees when it is
-// attached to Docker's own network rather than the host's.
+// dockerPrivateRanges are the address ranges a container is given when it is
+// attached to a container runtime's own network rather than the host's. They are
+// used only to detect that this process is isolated inside such a network, where
+// interface names do not help because the container simply sees "eth0".
+//
+// The Docker range is the default bridge's 172.17.0.0/16, not the whole
+// 172.16.0.0/12. The wider block is legitimate RFC1918 space that real LANs use,
+// so matching all of it wrongly flags a real 172.x network as container-only.
 var dockerPrivateRanges = []string{
-	"172.16.0.0/12",   // default bridge networks
+	"172.17.0.0/16",   // Docker default bridge
 	"192.168.65.0/24", // Docker Desktop's virtual machine
 	"10.88.0.0/16",    // podman default
+}
+
+// isContainerInterface reports whether an interface name belongs to a container
+// runtime rather than a real network. Docker's bridge is docker0, its
+// user-defined networks are br-<hash>, and the host side of a container's link
+// is veth*. Podman uses podman0 or cni-podman*.
+//
+// A plain br0, bridge0 or similar is deliberately not matched: those are
+// ordinary Linux bridges a user may legitimately put a real LAN on. Only the
+// br- form (with the hyphen), which Docker generates, is treated as a container
+// bridge.
+func isContainerInterface(name string) bool {
+	switch {
+	case strings.HasPrefix(name, "docker"):
+		return true
+	case strings.HasPrefix(name, "br-"):
+		return true
+	case strings.HasPrefix(name, "veth"):
+		return true
+	case strings.HasPrefix(name, "podman"), strings.HasPrefix(name, "cni-podman"):
+		return true
+	default:
+		return false
+	}
 }
 
 // isDockerPrivate reports whether a CIDR belongs to Docker's own networking
@@ -78,21 +108,26 @@ func IsolationWarning(detected []types.Network) string {
 		"Use host networking on Linux, or run LAN Orangutan directly on macOS and Windows."
 }
 
-// ExcludeContainerNetworks drops Docker's own bridge networks from a detected
-// list.
+// ExcludeContainerNetworks drops container bridge networks (Docker, Podman) from
+// a detected list, identifying them by their interface name rather than by
+// address range.
 //
-// A host running Docker has a docker0 bridge, typically 172.17.0.0/16. It is a
-// real interface, so detection finds it, but it holds containers rather than
-// devices on your network. Scanning it sweeps 65,536 addresses to find nothing
-// of interest, which on a Raspberry Pi takes minutes and makes "Scan All" look
-// broken.
+// A host running Docker has a docker0 bridge, and user-defined networks appear
+// as br-<hash>. These are real interfaces, so detection finds them, but they
+// hold containers rather than devices on your network. Scanning one sweeps
+// thousands of addresses to find nothing of interest, which on a Raspberry Pi
+// takes minutes and makes "Scan All" look broken.
 //
-// Anyone who genuinely wants to scan it can still name it explicitly through
-// the networks setting.
+// The interface name is used deliberately, not the address range. Docker
+// allocates from the same RFC1918 blocks (172.16/12, 192.168/16) that real LANs
+// use, so an address guess would both hide a real LAN on 172.x and miss a Docker
+// bridge on 192.168.x. The interface name is unambiguous. Anyone who genuinely
+// wants to scan a container bridge can still name it explicitly through the
+// networks setting.
 func ExcludeContainerNetworks(detected []types.Network) []types.Network {
 	out := make([]types.Network, 0, len(detected))
 	for _, n := range detected {
-		if isDockerPrivate(n.CIDR) {
+		if isContainerInterface(n.Interface) {
 			continue
 		}
 		out = append(out, n)

@@ -16,7 +16,7 @@ var networksCmd = &cobra.Command{
 
 func runNetworks(cmd *cobra.Command, args []string) error {
 	networks, err := network.DetectNetworks()
-	networks = network.WithConfigured(networks, cfg.Scanning.Networks)
+	networks = network.WithConfigured(networks, network.Filter{Configured: cfg.Scanning.Networks, Excluded: cfg.Scanning.ExcludeNetworks, OnlyConfigured: cfg.Scanning.OnlyConfiguredNetworks})
 	if err != nil {
 		return fmt.Errorf("failed to detect networks: %w", err)
 	}

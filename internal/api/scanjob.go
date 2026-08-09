@@ -7,10 +7,6 @@ import (
 	"time"
 )
 
-// scanJobTimeout caps how long a single network may be scanned for before it is
-// abandoned. Large networks are slow, so this is deliberately generous.
-const scanJobTimeout = 10 * time.Minute
-
 // percentUnknown is reported when a network has never been scanned before and
 // there is therefore no timing history to estimate progress from.
 const percentUnknown = -1
@@ -35,6 +31,11 @@ type scanJob struct {
 	estimatedSeconds float64
 	results          []networkScanSummary
 	err              string
+
+	// automatic marks a scan the background scanner started, as opposed to one
+	// the user clicked. Set once at creation. The UI uses it to stay quiet for
+	// automatic scans instead of popping the progress overlay on its own.
+	automatic bool
 }
 
 // scanProgress is the snapshot of a job returned to the UI.
@@ -53,6 +54,10 @@ type scanProgress struct {
 	Remaining *float64             `json:"remaining,omitempty"`
 	Networks  []networkScanSummary `json:"networks"`
 	Error     string               `json:"error,omitempty"`
+	// Automatic is true for a scan the background scanner started. The UI does
+	// not show its progress overlay for these, so an automatic scan never pops
+	// a dialog with a Cancel button on its own.
+	Automatic bool `json:"automatic"`
 }
 
 // snapshot returns the current progress of the job. The estimate is based on
@@ -74,6 +79,7 @@ func (j *scanJob) snapshot() scanProgress {
 		Percent:        percentUnknown,
 		Networks:       append([]networkScanSummary(nil), j.results...),
 		Error:          j.err,
+		Automatic:      j.automatic,
 	}
 
 	// Only a job that ran to completion is 100%. A cancelled or failed job
@@ -110,9 +116,12 @@ func (j *scanJob) snapshot() scanProgress {
 }
 
 // startScanJob begins scanning the given networks in the background. The caller
-// must hold h.jobMu.
-func (h *Handler) startScanJob(networks []string) *scanJob {
-	ctx, cancel := context.WithCancel(context.Background())
+// must hold h.jobMu. automatic marks a scan the background scanner started, so
+// the UI can stay quiet for it.
+func (h *Handler) startScanJob(networks []string, automatic bool) *scanJob {
+	// Descend from h.scanCtx (the server's shutdown context) rather than
+	// context.Background(), so cancelling it at shutdown cancels a running scan.
+	ctx, cancel := context.WithCancel(h.scanCtx)
 
 	job := &scanJob{
 		id:        fmt.Sprintf("scan-%d", time.Now().UnixNano()),
@@ -121,9 +130,14 @@ func (h *Handler) startScanJob(networks []string) *scanJob {
 		status:    "running",
 		startedAt: time.Now(),
 		results:   make([]networkScanSummary, 0, len(networks)),
+		automatic: automatic,
 	}
 
-	go job.run(ctx, h)
+	h.scanWG.Add(1)
+	go func() {
+		defer h.scanWG.Done()
+		job.run(ctx, h)
+	}()
 	return job
 }
 
@@ -149,9 +163,8 @@ func (j *scanJob) run(ctx context.Context, h *Handler) {
 			continue
 		}
 
-		scanCtx, cancel := context.WithTimeout(ctx, scanJobTimeout)
-		result, err := h.scanNetwork(scanCtx, cidr)
-		cancel()
+		// scanNetwork applies its own per-network timeout.
+		result, err := h.scanNetwork(ctx, cidr)
 
 		if err != nil {
 			// A cancelled job surfaces as a scan error, but it is not a failure.
@@ -169,6 +182,24 @@ func (j *scanJob) run(ctx context.Context, h *Handler) {
 		summary.DeviceCount = result.DeviceCount
 		summary.Duration = result.Duration
 		j.addResult(summary, result.DeviceCount)
+	}
+
+	// Supplemental discovery, once for the whole job: IPv6 neighbors (an IPv6
+	// subnet cannot be swept) and mDNS announcements. Both merge as secondary
+	// sources so they enrich rather than overwrite. A cancelled job skips them.
+	if ctx.Err() == nil {
+		if ipv6 := h.scanner.DiscoverIPv6(ctx); len(ipv6) > 0 {
+			if err := h.store.MergeIPv6Neighbors(ipv6); err == nil {
+				j.addResult(networkScanSummary{Network: "IPv6 neighbors", Status: "scanned", DeviceCount: len(ipv6)}, len(ipv6))
+			}
+		}
+	}
+	if ctx.Err() == nil {
+		if mdns := h.scanner.DiscoverMDNS(ctx); len(mdns) > 0 {
+			if err := h.store.MergeSupplemental(mdns); err == nil {
+				j.addResult(networkScanSummary{Network: "mDNS", Status: "scanned", DeviceCount: len(mdns)}, len(mdns))
+			}
+		}
 	}
 
 	j.finish("done", "")
@@ -206,4 +237,76 @@ func (j *scanJob) isRunning() bool {
 	j.mu.RLock()
 	defer j.mu.RUnlock()
 	return j.status == "running"
+}
+
+// adopt marks a running job as user-initiated. When someone clicks Scan while
+// the background scanner is mid-scan, the manual request attaches to that scan
+// (rather than being rejected) and adopts it so the progress overlay follows it
+// to completion instead of treating it as a silent automatic scan.
+func (j *scanJob) adopt() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.automatic = false
+}
+
+// StartBackgroundScanner re-scans the detected networks every interval so the
+// device list stays current on its own, without anyone clicking Scan or keeping
+// a browser open. It reuses the same job path, the one-scan-at-a-time guard and
+// the per-network rate limiting as a manual scan, and stops when ctx is
+// cancelled. A non-positive interval disables it. The ticker always runs so the
+// user can switch continuous scanning on and off at runtime; runBackgroundScan
+// skips the actual scan while the setting is off.
+func (h *Handler) StartBackgroundScanner(ctx context.Context, interval time.Duration) {
+	if interval <= 0 {
+		return
+	}
+
+	go func() {
+		// Scan shortly after startup so a freshly started server does not sit
+		// empty until the first interval elapses.
+		startup := time.NewTimer(5 * time.Second)
+		defer startup.Stop()
+		select {
+		case <-ctx.Done():
+			return
+		case <-startup.C:
+		}
+		h.runBackgroundScan()
+
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				h.runBackgroundScan()
+			}
+		}
+	}()
+}
+
+// runBackgroundScan starts one scan of all detected networks, unless a scan is
+// already running. The job itself skips any network that was scanned too
+// recently, so this never scans a network more often than the rate limit
+// allows, however short the interval.
+func (h *Handler) runBackgroundScan() {
+	// The ticker always runs so the setting can be toggled at runtime; skip the
+	// actual scan when continuous scanning is currently switched off.
+	if !h.store.ContinuousScanEnabled(h.cfg.Scanning.ContinuousScan) {
+		return
+	}
+
+	networks, err := h.resolveScanTargets("all")
+	if err != nil || len(networks) == 0 {
+		return
+	}
+
+	h.jobMu.Lock()
+	defer h.jobMu.Unlock()
+
+	if h.job != nil && h.job.isRunning() {
+		return
+	}
+	h.job = h.startScanJob(networks, true)
 }

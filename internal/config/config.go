@@ -117,6 +117,30 @@ type ScanningConfig struct {
 	EnablePortScan  bool
 	PortScanRange   string
 
+	// ContinuousScan makes the server re-scan the detected networks on its own
+	// every ScanInterval seconds, so the device list stays current without
+	// anyone clicking Scan or keeping a browser open. On by default: a
+	// discovery tool that only ever shows one stale scan is not much use. Set
+	// it false to scan only on demand.
+	ContinuousScan bool
+
+	// EnableServiceDetection turns on a light probe of a few well-known ports
+	// during a scan, used only to identify devices more precisely (a printer, a
+	// NAS, a device with a web interface). Off by default so the scan stays a
+	// quiet ping sweep unless the user opts in.
+	EnableServiceDetection bool
+
+	// OnlyConfiguredNetworks, when true, offers only the networks declared in
+	// Networks and ignores everything auto-detection finds. Useful on a host
+	// with many Docker bridges, VLANs or routed interfaces where the automatic
+	// list is noisy.
+	OnlyConfiguredNetworks bool
+
+	// ExcludeNetworks are CIDRs to drop from the auto-detected list, for real
+	// networks the user does not want scanned. A blocklist that complements
+	// Networks (the allowlist): keep auto-detection but hide a few subnets.
+	ExcludeNetworks []string
+
 	// Networks are CIDRs the user has declared explicitly, for cases where
 	// automatic detection cannot see the right network. A container only sees
 	// Docker's private network, so without this it can never scan the LAN.
@@ -141,6 +165,13 @@ type UIConfig struct {
 	Theme string
 }
 
+// Sensible fallbacks for the scan timings, also used by Normalize to repair an
+// out-of-range value rather than let it silently disable a feature.
+const (
+	defaultScanInterval    = 300
+	defaultMinScanInterval = 30
+)
+
 // Default returns a Config with default values
 func Default() *Config {
 	return &Config{
@@ -155,10 +186,12 @@ func Default() *Config {
 			SessionHours: 24 * 7,
 		},
 		Scanning: ScanningConfig{
-			ScanInterval:    300,
-			MinScanInterval: 30,
-			EnablePortScan:  false,
-			PortScanRange:   "1-1024",
+			ScanInterval:           defaultScanInterval,
+			MinScanInterval:        defaultMinScanInterval,
+			EnablePortScan:         false,
+			PortScanRange:          "1-1024",
+			ContinuousScan:         true,
+			EnableServiceDetection: false,
 		},
 		Storage: StorageConfig{
 			MaxDevices:    1000,
@@ -260,8 +293,16 @@ func (c *Config) setValue(section, key, value string) {
 			c.Scanning.EnablePortScan = parseBool(value)
 		case "port_scan_range":
 			c.Scanning.PortScanRange = value
+		case "continuous_scan":
+			c.Scanning.ContinuousScan = parseBool(value)
+		case "enable_service_detection":
+			c.Scanning.EnableServiceDetection = parseBool(value)
+		case "only_configured_networks":
+			c.Scanning.OnlyConfiguredNetworks = parseBool(value)
 		case "networks":
 			c.Scanning.Networks = network.ParseNetworkList(value)
+		case "exclude_networks":
+			c.Scanning.ExcludeNetworks = network.ParseNetworkList(value)
 		}
 	case "storage":
 		switch key {
@@ -331,14 +372,53 @@ func (c *Config) ApplyEnv() {
 	if v := os.Getenv("ORANGUTAN_NETWORKS"); v != "" {
 		c.Scanning.Networks = network.ParseNetworkList(v)
 	}
+	if v := os.Getenv("ORANGUTAN_ENABLE_SERVICE_DETECTION"); v != "" {
+		c.Scanning.EnableServiceDetection = parseBool(v)
+	}
+	if v := os.Getenv("ORANGUTAN_ONLY_CONFIGURED_NETWORKS"); v != "" {
+		c.Scanning.OnlyConfiguredNetworks = parseBool(v)
+	}
+	if v := os.Getenv("ORANGUTAN_EXCLUDE_NETWORKS"); v != "" {
+		c.Scanning.ExcludeNetworks = network.ParseNetworkList(v)
+	}
 	if v := os.Getenv("ORANGUTAN_SCAN_INTERVAL"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			c.Scanning.ScanInterval = n
 		}
 	}
+	if v := os.Getenv("ORANGUTAN_CONTINUOUS_SCAN"); v != "" {
+		c.Scanning.ContinuousScan = parseBool(v)
+	}
 	if v := os.Getenv("ORANGUTAN_THEME"); v != "" {
 		c.UI.Theme = v
 	}
+}
+
+// Normalize repairs out-of-range scan timings, clamping them back to the
+// defaults, and returns a human-readable note for each value it had to correct.
+// A non-positive scan_interval would otherwise silently disable the background
+// scanner even with continuous_scan on, and a non-positive min_scan_interval
+// would silently disable per-network rate limiting; both are corrected here so
+// a config typo cannot quietly turn a feature off. Call it after loading the
+// config from file and environment.
+func (c *Config) Normalize() []string {
+	var notes []string
+
+	if c.Scanning.MinScanInterval <= 0 {
+		notes = append(notes, fmt.Sprintf(
+			"min_scan_interval was %d; using %d so per-network rate limiting stays on",
+			c.Scanning.MinScanInterval, defaultMinScanInterval))
+		c.Scanning.MinScanInterval = defaultMinScanInterval
+	}
+
+	if c.Scanning.ScanInterval <= 0 {
+		notes = append(notes, fmt.Sprintf(
+			"scan_interval was %d; using %d so continuous scanning works when enabled",
+			c.Scanning.ScanInterval, defaultScanInterval))
+		c.Scanning.ScanInterval = defaultScanInterval
+	}
+
+	return notes
 }
 
 // IsLoopbackBind reports whether the configured bind address only accepts

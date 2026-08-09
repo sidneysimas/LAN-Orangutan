@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -19,9 +20,26 @@ import (
 // detected and returned as soon as it appears, well before this fires.
 const tailscaleUpTimeout = 20 * time.Second
 
-// loginURLPattern matches the sign-in URL that `tailscale up` prints when the
-// machine is not yet authenticated to a tailnet.
+// loginURLPattern finds a candidate sign-in URL in the output that `tailscale
+// up` prints when the machine is not yet authenticated to a tailnet.
 var loginURLPattern = regexp.MustCompile(`https://login\.tailscale\.com/\S+`)
+
+// extractLoginURL pulls the Tailscale sign-in URL out of `tailscale up` output.
+// The regex locates a candidate in the multi-line output, and its host is then
+// confirmed with a real URL parse rather than trusted from the pattern, so only
+// a genuine https://login.tailscale.com URL is ever returned. It returns "" when
+// there is no such URL.
+func extractLoginURL(text string) string {
+	candidate := loginURLPattern.FindString(text)
+	if candidate == "" {
+		return ""
+	}
+	u, err := url.Parse(candidate)
+	if err != nil || u.Scheme != "https" || u.Hostname() != "login.tailscale.com" {
+		return ""
+	}
+	return candidate
+}
 
 // TailscaleActionResult describes the outcome of a connect attempt.
 type TailscaleActionResult struct {
@@ -69,7 +87,7 @@ func ConnectTailscale() (TailscaleActionResult, error) {
 		select {
 		case err := <-done:
 			text := out.String()
-			if url := loginURLPattern.FindString(text); url != "" {
+			if url := extractLoginURL(text); url != "" {
 				return TailscaleActionResult{LoginURL: url}, nil
 			}
 			if err != nil {
@@ -78,7 +96,7 @@ func ConnectTailscale() (TailscaleActionResult, error) {
 			return TailscaleActionResult{Connected: IsTailscaleConnected()}, nil
 
 		case <-ticker.C:
-			if url := loginURLPattern.FindString(out.String()); url != "" {
+			if url := extractLoginURL(out.String()); url != "" {
 				cancel() // stop waiting; the user must sign in via the URL
 				<-done   // reap the process
 				return TailscaleActionResult{LoginURL: url}, nil

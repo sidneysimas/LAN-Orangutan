@@ -69,6 +69,17 @@ type PageData struct {
 	// minute an hour later, which is the very confusion the footer exists to
 	// prevent.
 	LastScanUnix int64
+
+	// Flagged is how many devices expose a risky service, and Moved how many
+	// have changed IP. They fill the dashboard summary strip with information
+	// worth glancing at rather than empty space.
+	Flagged int
+	Moved   int
+
+	// ContinuousScan reports whether the server re-scans on its own. When true
+	// the dashboard shows a "live" cue so the last-scan time does not read as
+	// stale data when it is actually being kept current.
+	ContinuousScan bool
 }
 
 // DeviceView is a device with computed display properties
@@ -82,14 +93,19 @@ type DeviceView struct {
 	// Vendor shadows the stored value so it can be resolved for records that
 	// predate the built-in manufacturer database.
 	Vendor string
+
+	// Type shadows the stored value so a device recorded before classification
+	// existed still shows a type, inferred from its vendor and hostname now.
+	Type string
 }
 
 // NewHandler creates a new web handler
 func NewHandler(store *storage.Storage, cfg *config.Config, authn *auth.Authenticator, version string) *Handler {
 	// Parse templates with custom functions
 	funcMap := template.FuncMap{
-		"timeAgo": timeAgo,
-		"lower":   strings.ToLower,
+		"timeAgo":  timeAgo,
+		"lower":    strings.ToLower,
+		"typeIcon": typeIcon,
 	}
 
 	tmpl := template.Must(template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/*.html"))
@@ -301,15 +317,31 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Convert to view models
 	var deviceViews []*DeviceView
 	groupSet := make(map[string]bool)
+	var flagged, moved int
 
 	for _, d := range devices {
+		if len(d.Risks) > 0 {
+			flagged++
+		}
+		if len(d.AddressHistory) > 0 {
+			moved++
+		}
+		// Devices recorded by an older version have no vendor stored, so look it
+		// up now rather than showing "Unknown" until a rescan.
+		resolvedVendor := scanner.ResolveVendor(d.Vendor, d.MAC)
+
 		dv := &DeviceView{
 			Device:       d,
 			TimeAgo:      timeAgo(d.LastSeen),
 			LastSeenUnix: d.LastSeen.Unix(),
-			// Devices recorded by an older version have no vendor stored, so
-			// look it up now rather than showing "Unknown" until a rescan.
-			Vendor: scanner.ResolveVendor(d.Vendor, d.MAC),
+			Vendor:       resolvedVendor,
+			Type:         d.Type,
+		}
+		// Backfill a type for records that predate classification, from the same
+		// vendor and hostname the row already shows. Port evidence is not
+		// available here, so this is the default path, not the opt-in probe.
+		if dv.Type == "" {
+			dv.Type = scanner.Classify(resolvedVendor, d.Hostname, nil)
 		}
 
 		if d.IsRecent() {
@@ -344,7 +376,7 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 	// Get networks
 	networks, _ := network.DetectNetworks()
-	networks = network.WithConfigured(networks, h.cfg.Scanning.Networks)
+	networks = network.WithConfigured(networks, network.Filter{Configured: h.cfg.Scanning.Networks, Excluded: h.cfg.Scanning.ExcludeNetworks, OnlyConfigured: h.cfg.Scanning.OnlyConfiguredNetworks})
 
 	// Get Tailscale status
 	tailscale := network.GetTailscaleStatus()
@@ -353,14 +385,18 @@ func (h *Handler) handleIndex(w http.ResponseWriter, r *http.Request) {
 	stats := h.store.GetStats()
 
 	data := PageData{
-		Title:       "LAN Orangutan",
-		Theme:       h.cfg.UI.Theme,
-		Devices:     deviceViews,
-		Networks:    networks,
-		Tailscale:   tailscale,
-		Stats:       stats,
-		Groups:      groups,
-		AuthEnabled: h.auth.Enabled(),
+		Title:          "LAN Orangutan",
+		Theme:          h.cfg.UI.Theme,
+		Devices:        deviceViews,
+		Networks:       networks,
+		Tailscale:      tailscale,
+		Stats:          stats,
+		Groups:         groups,
+		AuthEnabled:    h.auth.Enabled(),
+		Flagged:        flagged,
+		Moved:          moved,
+		Version:        h.version,
+		ContinuousScan: h.store.ContinuousScanEnabled(h.cfg.Scanning.ContinuousScan),
 	}
 
 	data.NetworkWarning = network.IsolationWarning(networks)

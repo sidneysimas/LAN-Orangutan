@@ -23,7 +23,7 @@ func TestParseNetworkList(t *testing.T) {
 }
 
 func TestConfiguredNetworksAreAdded(t *testing.T) {
-	got := WithConfigured(nil, []string{"192.168.50.0/24"})
+	got := WithConfigured(nil, Filter{Configured: []string{"192.168.50.0/24"}})
 	if len(got) != 1 {
 		t.Fatalf("expected the configured network to be added, got %d", len(got))
 	}
@@ -36,8 +36,8 @@ func TestConfiguredNetworksAreAdded(t *testing.T) {
 }
 
 func TestDuplicatesAreNotAddedTwice(t *testing.T) {
-	detected := WithConfigured(nil, []string{"192.168.50.0/24"})
-	again := WithConfigured(detected, []string{"192.168.50.0/24"})
+	detected := WithConfigured(nil, Filter{Configured: []string{"192.168.50.0/24"}})
+	again := WithConfigured(detected, Filter{Configured: []string{"192.168.50.0/24"}})
 
 	if len(again) != 1 {
 		t.Errorf("a network already present should not be added again, got %d", len(again))
@@ -45,7 +45,7 @@ func TestDuplicatesAreNotAddedTwice(t *testing.T) {
 }
 
 func TestInvalidCIDRsAreIgnored(t *testing.T) {
-	got := WithConfigured(nil, []string{"not-a-network", "192.168.1.999/24", "192.168.50.0/24"})
+	got := WithConfigured(nil, Filter{Configured: []string{"not-a-network", "192.168.1.999/24", "192.168.50.0/24"}})
 	if len(got) != 1 {
 		t.Fatalf("only the valid network should survive, got %d", len(got))
 	}

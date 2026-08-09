@@ -15,33 +15,118 @@ function applyTheme(theme) {
     void root.offsetWidth;                 // commit the new theme instantly
     root.classList.remove('theme-switching'); // restore transitions for hover
     localStorage.setItem('theme', theme);
+    syncThemeRadios(theme);
+    updateThemeToggle(theme);
 }
 
-// The header button is a plain light/dark switch. It used to cycle
-// light -> dark -> auto, but "auto" looks identical to whichever mode the
-// system is already in, so every third click appeared to do nothing. "Auto"
-// (follow the system) still lives on the settings page for anyone who wants it.
-function toggleTheme() {
-    let current = document.documentElement.getAttribute('data-theme');
-    if (!current || current === 'auto') {
-        current = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+// Keep the Settings page's Light/Dark/Auto radios showing the theme that is
+// actually applied. Without this they are checked from the server's config
+// default, so a browser that pinned Light/Dark with the header button would
+// still show "Auto" selected and leave the user unable to tell what is active
+// (or to re-pick a value that already looks chosen). A no-op on pages without
+// the radios (the dashboard).
+function syncThemeRadios(theme) {
+    document.querySelectorAll('input[name="theme"]').forEach(function (radio) {
+        radio.checked = radio.value === theme;
+    });
+}
+
+// Icons and labels for the header theme button, one per state. The icon always
+// changes on click, so cycling into Auto is visibly different even when Auto
+// happens to match the current system look (a sun for light, a moon for dark, a
+// monitor for "follow the system"). Feather-style strokes, currentColor so they
+// sit on the header in either theme.
+const THEME_TOGGLE = {
+    light: {
+        title: 'Theme: Light — click for Dark',
+        icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>'
+    },
+    dark: {
+        title: 'Theme: Dark — click for Auto',
+        icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+    },
+    auto: {
+        title: 'Theme: Auto (follows your system) — click for Light',
+        icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>'
     }
-    applyTheme(current === 'dark' ? 'light' : 'dark');
+};
+
+// Point the header button(s) at the state the given theme will land on, so the
+// icon and tooltip always describe what is actually active.
+function updateThemeToggle(theme) {
+    const state = THEME_TOGGLE[theme] ? theme : 'auto';
+    document.querySelectorAll('.theme-toggle').forEach(function (btn) {
+        btn.innerHTML = THEME_TOGGLE[state].icon;
+        btn.setAttribute('title', THEME_TOGGLE[state].title);
+        btn.setAttribute('aria-label', THEME_TOGGLE[state].title);
+    });
+}
+
+// The header button cycles light -> dark -> auto -> light, matching the three
+// choices on the settings page so the two controls can never disagree. The icon
+// changes on every click (see updateThemeToggle), so landing on Auto is always
+// a visible change even when Auto looks like the current system theme.
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'light' ? 'dark' : current === 'dark' ? 'auto' : 'light';
+    applyTheme(next);
 }
 
 // Initialize theme
 (function() {
     const saved = localStorage.getItem('theme');
-    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        // Reflect the real (localStorage) choice in the Settings radios, which
+        // the server rendered from the config default and would otherwise show
+        // a value the browser is not actually using.
+        syncThemeRadios(saved);
+    }
+    // Point the header button at whatever is actually active (the saved choice,
+    // or the server's config default when nothing is saved).
+    updateThemeToggle(document.documentElement.getAttribute('data-theme') || 'auto');
+})();
+
+// Accent colour. Blue is the default. Orange is the stylesheet's base and
+// carries no attribute; every other accent (including blue) sets data-accent,
+// which the stylesheet turns into the accent for both light and dark. The
+// choice is stored so it applies on every page and every visit.
+function applyAccent(name) {
+    name = name || 'blue';
+    if (name === 'orange') {
+        document.documentElement.removeAttribute('data-accent');
+    } else {
+        document.documentElement.setAttribute('data-accent', name);
+    }
+    localStorage.setItem('accent', name);
+}
+
+// setAccent is called from the settings swatches: apply and mark the active one.
+function setAccent(name) {
+    applyAccent(name);
+    document.querySelectorAll('.accent-swatch').forEach(function(sw) {
+        sw.classList.toggle('active', sw.dataset.accent === name);
+    });
+}
+
+(function() {
+    applyAccent(localStorage.getItem('accent'));
+    // Mark the active swatch on the settings page once it has rendered.
+    document.addEventListener('DOMContentLoaded', function() {
+        const current = localStorage.getItem('accent') || 'blue';
+        document.querySelectorAll('.accent-swatch').forEach(function(sw) {
+            sw.classList.toggle('active', sw.dataset.accent === current);
+        });
+    });
 })();
 
 // Toast notifications
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', duration = 3000) {
     const toast = document.getElementById('toast');
     if (!toast) return;
     toast.textContent = message;
     toast.className = 'toast ' + type + ' show';
-    setTimeout(() => toast.classList.remove('show'), 3000);
+    setTimeout(() => toast.classList.remove('show'), duration);
 }
 
 // API helper
@@ -193,9 +278,13 @@ async function followScan() {
     while (true) {
         await new Promise(r => setTimeout(r, SCAN_POLL_MS));
         const progress = (await api('scan/progress')).data;
-        if (progress.status !== 'running') {
+        // Stop when the scan ends, or when the current job is an automatic
+        // background scan: the user's scan has finished and the background
+        // scanner has taken the single job slot, so there is nothing of the
+        // user's left to follow. Automatic scans never own the overlay.
+        if (progress.status !== 'running' || progress.automatic) {
             hideScanProgress();
-            reportScanOutcome(progress);
+            if (!progress.automatic) reportScanOutcome(progress);
             return;
         }
         showScanProgress(progress);
@@ -220,7 +309,10 @@ async function runScan(target) {
 async function resumeScanIfRunning() {
     try {
         const progress = (await api('scan/progress')).data;
-        if (progress && progress.status === 'running') {
+        // Only resume a scan the user started. An automatic background scan
+        // must not pop the progress overlay (with its Cancel button) on its
+        // own; its results simply appear on the next refresh.
+        if (progress && progress.status === 'running' && !progress.automatic) {
             showScanProgress(progress);
             await followScan();
         }
@@ -240,14 +332,31 @@ async function scanAllNetworks() {
 }
 
 // Device filtering
+// Filter set by clicking a summary chip ("flagged" / "moved"), or null.
+let statChipFilter = null;
+
+// Toggle the chip filter: a second click on the same chip clears it.
+function applyStatChipFilter(kind) {
+    statChipFilter = statChipFilter === kind ? null : kind;
+    filterDevices();
+    if (statChipFilter) {
+        document.querySelector('.table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
 function filterDevices() {
+    // Reflect the active chip filter on the chips, which an auto-refresh may
+    // have just swapped out from under us.
+    document.querySelectorAll('.stat-chip-filter').forEach(chip =>
+        chip.classList.toggle('active', !!statChipFilter && chip.dataset.filter === statChipFilter));
+
     const search = (document.getElementById('device-search')?.value || '').toLowerCase();
     const statusFilter = document.getElementById('device-filter')?.value || 'all';
     const groupFilter = document.getElementById('group-filter')?.value || 'all';
 
     let visible = 0;
     document.querySelectorAll('.device-row').forEach(row => {
-        const text = [row.dataset.ip, row.dataset.hostname, row.dataset.mac, row.dataset.vendor, row.dataset.label].join(' ').toLowerCase();
+        const text = [row.dataset.ip, row.dataset.hostname, row.dataset.mac, row.dataset.vendor, row.dataset.label, row.dataset.type].join(' ').toLowerCase();
         const status = row.dataset.status;
         const group = row.dataset.group || '';
 
@@ -256,8 +365,11 @@ function filterDevices() {
             (statusFilter === 'online' && (status === 'online' || status === 'recent')) ||
             (statusFilter === 'offline' && status === 'offline');
         const matchGroup = groupFilter === 'all' || group === groupFilter;
+        const matchChip = !statChipFilter ||
+            (statChipFilter === 'moved' && row.dataset.moved === '1') ||
+            (statChipFilter === 'flagged' && row.dataset.flagged === '1');
 
-        const show = matchSearch && matchStatus && matchGroup;
+        const show = matchSearch && matchStatus && matchGroup && matchChip;
         row.style.display = show ? '' : 'none';
         if (show) visible++;
     });
@@ -332,9 +444,13 @@ async function updateDeviceGroup(select) {
         const result = await api('device', { ip, group }, 'POST');
         if (result.success) {
             showToast('Group updated', 'success');
-            // Update data attribute
+            // Update data attribute, then re-apply the current filters so a row
+            // moved out of the active group filter stops showing (and the
+            // "Showing N devices" count stays honest) without waiting for the
+            // next refresh.
             const row = select.closest('.device-row');
             if (row) row.dataset.group = group;
+            filterDevices();
         } else {
             showToast(result.error || 'Failed to update', 'error');
         }
@@ -343,20 +459,90 @@ async function updateDeviceGroup(select) {
     }
 }
 
-// Copy to clipboard
+// Copy to clipboard.
+//
+// The async Clipboard API (navigator.clipboard) is only exposed in a secure
+// context: HTTPS, or localhost. On a phone opening the dashboard over plain
+// http on the LAN (http://<pi-ip>:291) it is not available, so we fall back to
+// the legacy execCommand path. That is how most people reach a self-hosted
+// instance, so the fallback is the common case, not an edge one.
 function copyToClipboard(text, event) {
-    navigator.clipboard.writeText(text).then(() => {
-        // Show feedback at cursor position
-        const feedback = document.createElement('div');
-        feedback.className = 'copy-feedback';
-        feedback.textContent = 'Copied!';
-        feedback.style.left = event.pageX + 'px';
-        feedback.style.top = (event.pageY - 30) + 'px';
-        document.body.appendChild(feedback);
-        setTimeout(() => feedback.remove(), 800);
-    }).catch(() => {
-        showToast('Failed to copy', 'error');
-    });
+    const ok = () => showCopied(event);
+    const fail = () => showToast('Failed to copy', 'error');
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(ok).catch(() => {
+            if (legacyCopy(text)) ok(); else fail();
+        });
+    } else if (legacyCopy(text)) {
+        ok();
+    } else {
+        fail();
+    }
+}
+
+// The floating "Copied!" note at the tap/cursor point.
+function showCopied(event) {
+    const feedback = document.createElement('div');
+    feedback.className = 'copy-feedback';
+    feedback.textContent = 'Copied!';
+    document.body.appendChild(feedback);
+    // .copy-feedback is position: fixed, so it is placed in viewport
+    // coordinates (clientX/clientY). pageX/pageY include the scroll offset,
+    // which pushed the note far below the viewport once the page was scrolled
+    // down (e.g. the IPv6 rows), so it never showed there. A synthetic event
+    // may lack coordinates, so fall back to the centre of the screen.
+    //
+    // Centre the note on the tap, then clamp it inside the viewport keeping a
+    // comfortable margin from every edge. On a phone the values are right
+    // aligned in their cards, so the tap lands near the right edge; without a
+    // real margin the note sits flush against (or off) the screen edge, which
+    // is what looked wrong. Measured after append for its real size.
+    const pad = 16;
+    const w = feedback.offsetWidth;
+    const x = event && event.clientX ? event.clientX : window.innerWidth / 2;
+    const y = event && event.clientY ? event.clientY : 40;
+    const left = Math.max(pad, Math.min(x - w / 2, window.innerWidth - w - pad));
+    const top = Math.max(pad, y - 30);
+    feedback.style.left = left + 'px';
+    feedback.style.top = top + 'px';
+    setTimeout(() => feedback.remove(), 800);
+}
+
+// Legacy clipboard copy for non-secure contexts (plain-http LAN access from a
+// phone). Uses a hidden, selectable field and document.execCommand('copy'),
+// which is deprecated but is the only clipboard path available without HTTPS
+// and still works across current mobile and desktop browsers. The Range-based
+// selection is what makes it work on iOS Safari, where textarea.select() alone
+// does not. Returns whether the copy succeeded, and restores any prior page
+// selection so the user's own text selection is left untouched.
+function legacyCopy(text) {
+    let ok = false;
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.contentEditable = 'true';
+    field.readOnly = false;
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    field.style.opacity = '0';
+    document.body.appendChild(field);
+    const selection = window.getSelection();
+    const previous = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    try {
+        const range = document.createRange();
+        range.selectNodeContents(field);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        field.setSelectionRange(0, text.length);
+        ok = document.execCommand('copy');
+    } catch (e) {
+        ok = false;
+    }
+    document.body.removeChild(field);
+    if (selection) {
+        selection.removeAllRanges();
+        if (previous) selection.addRange(previous);
+    }
+    return ok;
 }
 
 // Export devices
@@ -432,63 +618,87 @@ function toggleDropdown(id) {
 let sortColumn = null;
 let sortAsc = true;
 
-function sortTable(column) {
+// compareRows orders two device rows by the active column and direction. Split
+// out so the sort can be re-applied after an auto-refresh without re-toggling
+// the direction.
+function compareRows(a, b, column) {
+    let valA, valB;
+
+    switch (column) {
+        case 'ip':
+            // Sort IP addresses numerically
+            valA = a.dataset.ip.split('.').map(n => n.padStart(3, '0')).join('');
+            valB = b.dataset.ip.split('.').map(n => n.padStart(3, '0')).join('');
+            break;
+        case 'hostname':
+            valA = a.dataset.hostname || 'zzz';
+            valB = b.dataset.hostname || 'zzz';
+            break;
+        case 'mac':
+            valA = a.dataset.mac || 'zzz';
+            valB = b.dataset.mac || 'zzz';
+            break;
+        case 'vendor':
+            valA = a.dataset.vendor || 'zzz';
+            valB = b.dataset.vendor || 'zzz';
+            break;
+        case 'status':
+            const order = { online: 0, recent: 1, offline: 2 };
+            valA = order[a.dataset.status] ?? 3;
+            valB = order[b.dataset.status] ?? 3;
+            break;
+        case 'lastseen':
+            valA = parseInt(a.dataset.lastseen) || 0;
+            valB = parseInt(b.dataset.lastseen) || 0;
+            break;
+        default:
+            valA = a.dataset[column] || '';
+            valB = b.dataset[column] || '';
+    }
+
+    if (valA < valB) return sortAsc ? -1 : 1;
+    if (valA > valB) return sortAsc ? 1 : -1;
+    return 0;
+}
+
+// applyCurrentSort reorders the rows in the DOM to match the active sort. It
+// does nothing when no column is sorted, so a freshly loaded (server-ordered)
+// table is left as the server sent it.
+function applyCurrentSort() {
+    if (!sortColumn) return;
     const tbody = document.getElementById('devices-tbody');
     if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('.device-row'));
+    rows.sort((a, b) => compareRows(a, b, sortColumn));
+    rows.forEach(row => tbody.appendChild(row));
+}
 
+// updateSortIndicator shows which column is sorted and in which direction. The
+// arrow flips between ascending and descending; every other column shows the
+// neutral glyph. The header row is not replaced on refresh, so this only needs
+// to run when the sort itself changes.
+function updateSortIndicator() {
+    document.querySelectorAll('.table th[data-sort]').forEach(th => {
+        const icon = th.querySelector('.sort-icon');
+        if (th.dataset.sort === sortColumn) {
+            th.classList.add('sorted');
+            if (icon) icon.textContent = sortAsc ? '↑' : '↓';
+        } else {
+            th.classList.remove('sorted');
+            if (icon) icon.textContent = '↕';
+        }
+    });
+}
+
+function sortTable(column) {
     if (sortColumn === column) {
         sortAsc = !sortAsc;
     } else {
         sortColumn = column;
         sortAsc = true;
     }
-
-    const rows = Array.from(tbody.querySelectorAll('.device-row'));
-
-    rows.sort((a, b) => {
-        let valA, valB;
-
-        switch (column) {
-            case 'ip':
-                // Sort IP addresses numerically
-                valA = a.dataset.ip.split('.').map(n => n.padStart(3, '0')).join('');
-                valB = b.dataset.ip.split('.').map(n => n.padStart(3, '0')).join('');
-                break;
-            case 'hostname':
-                valA = a.dataset.hostname || 'zzz';
-                valB = b.dataset.hostname || 'zzz';
-                break;
-            case 'mac':
-                valA = a.dataset.mac || 'zzz';
-                valB = b.dataset.mac || 'zzz';
-                break;
-            case 'vendor':
-                valA = a.dataset.vendor || 'zzz';
-                valB = b.dataset.vendor || 'zzz';
-                break;
-            case 'status':
-                const order = { online: 0, recent: 1, offline: 2 };
-                valA = order[a.dataset.status] ?? 3;
-                valB = order[b.dataset.status] ?? 3;
-                break;
-            case 'lastseen':
-                valA = parseInt(a.dataset.lastseen) || 0;
-                valB = parseInt(b.dataset.lastseen) || 0;
-                break;
-            default:
-                valA = a.dataset[column] || '';
-                valB = b.dataset[column] || '';
-        }
-
-        if (valA < valB) return sortAsc ? -1 : 1;
-        if (valA > valB) return sortAsc ? 1 : -1;
-        return 0;
-    });
-
-    rows.forEach(row => tbody.appendChild(row));
-
-    // Update sort indicators
-    document.querySelectorAll('.table th').forEach(th => th.classList.remove('sorted'));
+    applyCurrentSort();
+    updateSortIndicator();
 }
 
 // Auto-refresh
@@ -523,16 +733,21 @@ async function refreshInPlace() {
 
     document.getElementById('devices-tbody')?.replaceWith(freshRows);
 
-    for (const selector of ['.stats-bar', '.table-footer', '#device-count']) {
+    for (const selector of ['.stat-strip', '.table-footer', '#device-count', '#scan-time-top']) {
         const current = document.querySelector(selector);
         const replacement = doc.querySelector(selector);
         if (current && replacement) current.replaceWith(replacement);
     }
 
-    // The search box and filter dropdowns are deliberately left alone, so
-    // re-apply what they currently say to the rows that just arrived.
+    // The search box, filter dropdowns and column sort are deliberately left
+    // alone, so re-apply what they currently say to the rows that just arrived.
+    // Without re-sorting, a live-refreshing table would jump back to server
+    // order every interval, quietly undoing the user's chosen sort.
     updateRelativeTimes();
     filterDevices();
+    applyCurrentSort();
+    // Let the scroll-dock re-measure in case the new strip is a different height.
+    window.dispatchEvent(new Event('devices-refreshed'));
     return true;
 }
 
@@ -546,33 +761,64 @@ function startAutoRefresh() {
     }, AUTO_REFRESH_MS);
 }
 
-function toggleAutoRefresh() {
-    const toggle = document.getElementById('auto-refresh-toggle');
-    if (!toggle) return;
+// Continuous scan is the single control for "live vs snapshot". When on, the
+// server keeps scanning AND the browser auto-refreshes to show it AND the "Live"
+// cue appears; when off, everything is a static snapshot. Binding the view to
+// this one setting removes the confusing "scanning but frozen" combination.
+// The initial state is rendered into the toggle by the server.
+let continuousScan = !!(document.getElementById('continuous-scan-toggle') &&
+    document.getElementById('continuous-scan-toggle').classList.contains('active'));
 
+function stopAutoRefresh() {
     if (autoRefreshInterval) {
         clearInterval(autoRefreshInterval);
         autoRefreshInterval = null;
-        toggle.classList.remove('active');
-        localStorage.setItem('autoRefresh', 'false');
-    } else {
-        startAutoRefresh();
-        toggle.classList.add('active');
-        localStorage.setItem('autoRefresh', 'true');
-        showToast('Auto-refresh enabled (30s)', 'info');
     }
 }
 
-// Initialize auto-refresh from localStorage
-(function() {
-    if (localStorage.getItem('autoRefresh') === 'true') {
-        const toggle = document.getElementById('auto-refresh-toggle');
-        if (toggle) {
-            toggle.classList.add('active');
-            startAutoRefresh();
-        }
+// Bring the view (auto-refresh polling and the "Live" cue) in line with the
+// current continuous-scan state.
+function applyContinuousScanState() {
+    document.documentElement.classList.toggle('live-view', continuousScan);
+    if (continuousScan) startAutoRefresh();
+    else stopAutoRefresh();
+}
+
+// toggleContinuousScan switches the server's background scanner on or off at
+// runtime. The choice is persisted server-side, so it survives a restart and
+// lets a user scan once and sit on the snapshot.
+async function toggleContinuousScan() {
+    const toggle = document.getElementById('continuous-scan-toggle');
+    if (!toggle) return;
+    const next = !continuousScan;
+    try {
+        const res = await api('scan/continuous', { enabled: next }, 'POST');
+        if (!res || !res.success) throw new Error((res && res.error) || 'request failed');
+    } catch (e) {
+        showToast('Could not change continuous scan: ' + e.message, 'error');
+        return;
     }
-})();
+    continuousScan = next;
+    toggle.classList.toggle('active', next);
+    toggle.setAttribute('aria-checked', next ? 'true' : 'false');
+    applyContinuousScanState();
+    showToast(next
+        ? 'Continuous scan on: the server keeps scanning your networks and the view updates automatically.'
+        : 'Continuous scan off: showing a static snapshot. Click Scan All whenever you want a fresh one.',
+        'info', 5000);
+}
+
+// Start the view in whatever state the server reports.
+applyContinuousScanState();
+
+// Keyboard support for the toolbar switch (role="switch" tabindex="0").
+document.addEventListener('keydown', e => {
+    const sw = e.target.closest && e.target.closest('.toggle-switch[role="switch"]');
+    if (sw && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        sw.click();
+    }
+});
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
@@ -590,9 +836,8 @@ document.addEventListener('keydown', e => {
         case 't':
             toggleTheme();
             break;
-        case 'escape':
-            closeModal();
-            break;
+        // Escape is handled by a dedicated listener below so it also works
+        // while focus is inside a modal input, where this handler bails out.
     }
 });
 
@@ -701,3 +946,267 @@ async function disconnectTailscale() {
         showToast('Could not disconnect: ' + e.message, 'error');
     }
 }
+
+// Summary strip scroll-dock: as the page scrolls and the strip's top reaches
+// the header, add .strip-docked to <body>. CSS then lifts the strip to
+// position: fixed in the header band (transparent + light). It snaps in the
+// instant it touches, so the glass bar is never painted over the header.
+//
+// The whole thing is driven by a class on <body> and matched by CSS selector;
+// the strip is never moved or held in a variable, so an auto-refresh that swaps
+// the strip element out cannot break it. The holder reserves the strip's height
+// (via --strip-h) so the page never jumps. No-ops on narrow screens and reduced
+// motion.
+(function initStatDock() {
+    const holder = document.querySelector('.stat-strip-holder');
+    const header = document.querySelector('.header');
+    if (!holder || !header) return;
+
+    const wide = window.matchMedia('(min-width: 1100px)');
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const brand = header.querySelector('.header-brand');
+    const nav = header.querySelector('.header-nav');
+    let touchAt = Infinity;
+
+    // Bound the docked strip to the space between the logo and the nav, so it
+    // can never slide under either. The nav widens when a "Sign out" link is
+    // present (auth enabled) and shifts with the monitor width, so measure it
+    // live rather than assuming a fixed layout.
+    function measureDockBounds() {
+        if (!brand || !nav) return;
+        const gap = 20;
+        const left = Math.round(brand.getBoundingClientRect().right + gap);
+        const right = Math.round(window.innerWidth - nav.getBoundingClientRect().left + gap);
+        document.documentElement.style.setProperty('--dock-left', Math.max(0, left) + 'px');
+        document.documentElement.style.setProperty('--dock-right', Math.max(0, right) + 'px');
+    }
+
+    function measure() {
+        // Reserve exactly the strip's height, and find the scroll offset at
+        // which the holder's top reaches the header's bottom (the touch point).
+        // Re-query the strip so a refreshed one is always measured.
+        const strip = holder.querySelector('.stat-strip');
+        if (strip) holder.style.setProperty('--strip-h', strip.offsetHeight + 'px');
+        touchAt = Math.max(0, holder.getBoundingClientRect().top + window.scrollY - header.offsetHeight);
+        measureDockBounds();
+    }
+
+    // Drop the least-critical pieces from the docked strip only as far as
+    // needed to keep it on one line inside its band: the scanned/Live line
+    // first, then the chips. Driven by the real overflow (scrollWidth beyond
+    // the band's clientWidth), so it adapts to any monitor width and nav size
+    // instead of guessing a breakpoint.
+    function fitDock() {
+        const strip = holder.querySelector('.stat-strip');
+        if (!strip) return;
+        document.body.classList.remove('dock-hide-scan', 'dock-hide-meta');
+        if (strip.scrollWidth > strip.clientWidth + 1) document.body.classList.add('dock-hide-scan');
+        if (strip.scrollWidth > strip.clientWidth + 1) document.body.classList.add('dock-hide-meta');
+    }
+
+    let wasDocked = false;
+    function onScroll() {
+        const docked = wide.matches && !reduce.matches && window.scrollY >= touchAt;
+        document.body.classList.toggle('strip-docked', docked);
+        if (docked && !wasDocked) fitDock();
+        if (!docked) document.body.classList.remove('dock-hide-scan', 'dock-hide-meta');
+        wasDocked = docked;
+    }
+
+    function remeasure() {
+        // Only re-measure the reserve while undocked; a docked holder is a fixed
+        // reserve. The dock bounds, though, must track the header at any width.
+        if (!document.body.classList.contains('strip-docked')) measure();
+        else measureDockBounds();
+        onScroll();
+        if (document.body.classList.contains('strip-docked')) fitDock();
+    }
+
+    measure();
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', remeasure);
+    // An auto-refresh can swap in a strip of a different height (e.g. a flagged
+    // chip appears), so re-measure the reserve and touch point after each one.
+    window.addEventListener('devices-refreshed', remeasure);
+})();
+
+// Back-to-top button: a floating orangutan that appears once the page is
+// scrolled past a threshold and smoothly returns to the top when clicked.
+(function initScrollTop() {
+    const btn = document.getElementById('scroll-top');
+    if (!btn) return;
+
+    const THRESHOLD = 300;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    // Sit the button in the bottom-right corner, always clear of the vertical
+    // scrollbar. That scrollbar has real width on Linux/Windows (~15px) and
+    // zero width on overlay-scrollbar systems like macOS, so measure it
+    // (innerWidth includes it, clientWidth does not) and add it to the inset.
+    // This keeps the button off the scrollbar on every platform and view.
+    function place() {
+        const scrollbar = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+        btn.style.left = 'auto';
+        btn.style.right = (18 + scrollbar) + 'px';
+    }
+
+    function onScroll() {
+        btn.classList.toggle('visible', window.scrollY > THRESHOLD);
+    }
+
+    place();
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', place);
+    window.addEventListener('devices-refreshed', place);
+
+    btn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: reduce.matches ? 'auto' : 'smooth' });
+    });
+})();
+
+// Instant tooltips for truncated table cells (hostname, vendor, label). The
+// native `title` attribute waits ~1s before showing (and resets to that delay
+// when "cold"), so those cells use this instead: one shared element at the body
+// level, shown the moment the pointer enters a cell whose text is actually
+// clipped. Positioned in fixed coordinates so the cell's overflow never clips it.
+(function initCellTips() {
+    const table = document.getElementById('devices-table');
+    if (!table) return;
+
+    const tip = document.createElement('div');
+    tip.id = 'cell-tip';
+    tip.setAttribute('role', 'tooltip');
+    document.body.appendChild(tip);
+
+    const SELECTOR = '.hostname-cell, .vendor-cell, .label-cell, .ip-cell, .mac-cell';
+
+    function isClipped(cell) {
+        return cell.scrollWidth > cell.clientWidth + 1;
+    }
+
+    function show(cell) {
+        const text = (cell.textContent || '').trim();
+        if (!text || !isClipped(cell)) return;
+
+        // Match the cell's own text exactly so the reveal reads as the same text
+        // un-truncating in place rather than a separate label.
+        const cs = getComputedStyle(cell);
+        const c = cell.getBoundingClientRect();
+        tip.textContent = text;
+        tip.style.fontFamily = cs.fontFamily;
+        tip.style.fontSize = cs.fontSize;
+        tip.style.fontWeight = cs.fontWeight;
+        tip.style.fontStyle = cs.fontStyle;
+        tip.style.letterSpacing = cs.letterSpacing;
+        tip.style.color = cs.color;
+        tip.style.paddingLeft = cs.paddingLeft;
+        tip.style.paddingRight = cs.paddingRight;
+        tip.style.height = Math.round(c.height) + 'px';
+        tip.classList.add('show');
+
+        // Overlay the cell and grow to the right; nudge left only if the full
+        // value would run off the right edge of the window.
+        const t = tip.getBoundingClientRect();
+        let left = c.left;
+        if (left + t.width > window.innerWidth - 6) {
+            left = Math.max(6, window.innerWidth - t.width - 6);
+        }
+        tip.style.left = Math.round(left) + 'px';
+        tip.style.top = Math.round(c.top) + 'px';
+    }
+
+    function hide() {
+        tip.classList.remove('show');
+    }
+
+    // Delegated hover. mouseover/mouseout bubble, so they cover cells added by
+    // an auto-refresh too. Only hide when the pointer truly leaves the cell.
+    table.addEventListener('mouseover', function (e) {
+        const cell = e.target.closest(SELECTOR);
+        if (cell) show(cell);
+    });
+    table.addEventListener('mouseout', function (e) {
+        const cell = e.target.closest(SELECTOR);
+        if (cell && !cell.contains(e.relatedTarget)) hide();
+    });
+    // A stale tooltip must not linger over new content.
+    window.addEventListener('scroll', hide, { passive: true });
+})();
+
+// Click-to-copy for value cells (IP, MAC, hostname, vendor). Driven by a
+// data-copy attribute and event delegation rather than an inline onclick, so a
+// value that contains quotes (a vendor name, say) can never break out of the
+// handler, and rows added by an auto-refresh are covered automatically. Empty
+// values (a placeholder like "Unknown") carry data-copy="" and are skipped.
+(function initCopyCells() {
+    const table = document.getElementById('devices-table');
+    if (!table) return;
+    table.addEventListener('click', function (e) {
+        const cell = e.target.closest('td[data-copy]');
+        if (!cell) return;
+        const value = cell.getAttribute('data-copy');
+        if (value) copyToClipboard(value, e);
+    });
+})();
+
+// Clickable summary chips: clicking "N flagged" or "N moved" filters the device
+// list to just those devices (and a second click clears it). Delegated on the
+// document so it keeps working after an auto-refresh swaps the strip, and while
+// the strip is docked in the header.
+(function initStatChipFilters() {
+    document.addEventListener('click', function (e) {
+        const chip = e.target.closest && e.target.closest('.stat-chip-filter[data-filter]');
+        if (chip) applyStatChipFilter(chip.dataset.filter);
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const chip = e.target.closest && e.target.closest('.stat-chip-filter[data-filter]');
+        if (chip) { e.preventDefault(); applyStatChipFilter(chip.dataset.filter); }
+    });
+})();
+
+// Instant tooltips for small indicators carrying a data-tip attribute (moved,
+// risk, web-interface, notes). One shared bubble at the body level shown the
+// moment the pointer enters the element, so there is no native `title` delay.
+// Delegated on the document, so it also covers rows added by an auto-refresh.
+(function initHintTips() {
+    let tip = null;
+    function ensure() {
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.id = 'hint-tip';
+            tip.setAttribute('role', 'tooltip');
+            document.body.appendChild(tip);
+        }
+        return tip;
+    }
+    function show(el) {
+        const text = el.getAttribute('data-tip');
+        if (!text) return;
+        const t = ensure();
+        t.textContent = text;
+        t.classList.add('show');
+        const r = el.getBoundingClientRect();
+        const tr = t.getBoundingClientRect();
+        let left = r.left + r.width / 2 - tr.width / 2;
+        left = Math.max(6, Math.min(left, window.innerWidth - tr.width - 6));
+        let top = r.top - tr.height - 8;      // above the icon by default
+        if (top < 6) top = r.bottom + 8;       // drop below when no room above
+        t.style.left = Math.round(left) + 'px';
+        t.style.top = Math.round(top) + 'px';
+    }
+    function hide() {
+        if (tip) tip.classList.remove('show');
+    }
+    document.addEventListener('mouseover', function (e) {
+        const el = e.target.closest && e.target.closest('[data-tip]');
+        if (el) show(el);
+    });
+    document.addEventListener('mouseout', function (e) {
+        const el = e.target.closest && e.target.closest('[data-tip]');
+        if (el && !el.contains(e.relatedTarget)) hide();
+    });
+    window.addEventListener('scroll', hide, { passive: true });
+})();

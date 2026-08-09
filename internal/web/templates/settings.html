@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="{{.Theme}}">
 <head>
+    <script>(function(){try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t);var a=localStorage.getItem("accent")||"blue";if(a!=="orange")document.documentElement.setAttribute("data-accent",a);}catch(e){}})();</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - LAN Orangutan</title>
@@ -8,6 +9,52 @@
     <link rel="icon" type="image/svg+xml" href="/static/orangutan.svg">
 </head>
 <body>
+    <noscript>
+        <div class="noscript-screen">
+            <div class="noscript-card">
+                <div class="noscript-head">
+                    <img src="/static/orangutan.svg" alt="LAN Orangutan" class="noscript-logo" width="60" height="60">
+                    <div>
+                        <h1>JavaScript is switched off</h1>
+                        <p class="noscript-sub">The web dashboard needs JavaScript to run. Here's what it offers, and how to use LAN Orangutan without it. Pick whichever you prefer.</p>
+                    </div>
+                </div>
+
+                <div class="noscript-cols">
+                    <section class="noscript-panel">
+                        <h2>The web dashboard</h2>
+                        <p>A live, visual view of your network. It uses JavaScript for:</p>
+                        <ul>
+                            <li>Live device updates as the server scans</li>
+                            <li>Running scans, and sorting, filtering, searching</li>
+                            <li>Editing labels and groups, and copying addresses</li>
+                        </ul>
+                        <p class="noscript-action">Allow JavaScript for this site (in your browser or script blocker), then reload.</p>
+                    </section>
+
+                    <section class="noscript-panel">
+                        <h2>Or the command line</h2>
+                        <p>Same discovery, no browser or JavaScript needed, straight from your terminal:</p>
+                        <pre class="noscript-cli"><code>orangutan scan all      # scan your networks
+orangutan list          # list found devices
+orangutan status        # service &amp; network status
+orangutan export out.csv</code></pre>
+                        <p class="noscript-action-muted">Run <code>orangutan --help</code> to see everything.</p>
+                    </section>
+                </div>
+
+                <p class="noscript-safety"><strong>Is the dashboard safe?</strong> Yes. LAN Orangutan is self-hosted: its JavaScript runs entirely in your own browser against your own server, and makes no third-party or external calls. It is served from this machine at <code>/static/app.js</code>.</p>
+
+                <footer class="noscript-footer">
+                    <img src="/static/orangutan.svg" alt="" class="noscript-footer-logo" width="22" height="22">
+                    <span class="noscript-footer-name">LAN Orangutan by 291 Group</span>
+                    <span class="noscript-footer-sep">&bull;</span>
+                    <a href="https://github.com/291-Group/LAN-Orangutan" target="_blank" rel="noopener">github.com/291-Group/LAN-Orangutan</a>
+                </footer>
+            </div>
+        </div>
+    </noscript>
+
     <header class="header">
         <a href="/" class="header-brand">
             <img src="/static/orangutan.svg" alt="" class="logo" width="32" height="32">
@@ -113,6 +160,17 @@
                             <input type="radio" name="theme" value="auto" {{if eq .Theme "auto"}}checked{{end}} onchange="setTheme('auto')"> Auto
                         </label>
                     </div>
+                </div>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>Accent color</label>
+                    <div class="accent-swatches">
+                        <button type="button" class="accent-swatch" data-accent="orange" style="background:#e0842c" onclick="setAccent('orange')" title="Orange" aria-label="Orange accent"></button>
+                        <button type="button" class="accent-swatch" data-accent="gold" style="background:#d9a227" onclick="setAccent('gold')" title="Gold" aria-label="Gold accent"></button>
+                        <button type="button" class="accent-swatch" data-accent="blue" style="background:#2f7fd4" onclick="setAccent('blue')" title="Blue" aria-label="Blue accent"></button>
+                        <button type="button" class="accent-swatch" data-accent="green" style="background:#2c9e6b" onclick="setAccent('green')" title="Green" aria-label="Green accent"></button>
+                        <button type="button" class="accent-swatch" data-accent="purple" style="background:#8b6fc4" onclick="setAccent('purple')" title="Purple" aria-label="Purple accent"></button>
+                    </div>
+                    <p class="form-help">Applies across the app, in both light and dark.</p>
                 </div>
             </div>
         </section>

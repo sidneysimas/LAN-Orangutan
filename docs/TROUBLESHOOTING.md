@@ -87,10 +87,10 @@ Or change the port in your config file.
    ```bash
    # Allow external access
    orangutan serve --bind 0.0.0.0
+   ```
 
    This is the default. The first visit asks you to create a password, so the
    dashboard is not left open on your network.
-   ```
 
 ## Tailscale not detected
 
@@ -104,6 +104,12 @@ Or change the port in your config file.
    # If using Tailscale app from App Store
    /Applications/Tailscale.app/Contents/MacOS/Tailscale status
    ```
+
+3. **Running in Docker? Tailscale will read as "Not Installed."** The container
+   has its own filesystem and cannot see the host's Tailscale, so the status and
+   the connect/disconnect controls are unavailable there even when the host is on
+   your tailnet. Run the binary directly on the host to use Tailscale with LAN
+   Orangutan.
 
 ## Connect or disconnect button does nothing
 

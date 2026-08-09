@@ -1,58 +1,127 @@
 :root,
 [data-theme="light"] {
+    /* 291 defacto palette (from LAN Sheriff), mapped onto LAN Orangutan's
+       variable names. Orange stays the product's brand accent; the 291 gold,
+       blue and greens fill the semantic roles. */
     --bg-primary: #ffffff;
-    --bg-secondary: #f8fafc;
-    --bg-tertiary: #f1f5f9;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
-    --border-color: #e2e8f0;
-    --accent-primary: #f97316;
-    --accent-secondary: #06b6d4;
-    --accent-hover: #ea580c;
-    --success: #22c55e;
-    --success-bg: rgba(34, 197, 94, 0.1);
-    --warning: #f59e0b;
-    --warning-bg: rgba(245, 158, 11, 0.1);
-    --danger: #ef4444;
-    --danger-bg: rgba(239, 68, 68, 0.1);
-    --card-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
-    --card-shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-    --header-bg: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    --bg-secondary: #eef2f8;
+    --bg-tertiary: #e4ecf6;
+    --text-primary: #16202e;
+    --text-secondary: #56637a;
+    --text-muted: #8592a6;
+    --border-color: rgba(16, 24, 40, 0.09);
+    --accent-primary: #e0842c;
+    --accent-secondary: #2f7fd4;
+    --accent-hover: #c9721f;
+    --success: #2c9e6b;
+    --success-bg: rgba(44, 158, 107, 0.12);
+    --warning: #d9a227;
+    --warning-bg: rgba(217, 162, 39, 0.14);
+    --danger: #d9483f;
+    --danger-bg: rgba(217, 72, 63, 0.10);
+    --card-shadow: 0 2px 10px rgba(16, 24, 40, 0.06);
+    --card-shadow-lg: 0 8px 32px rgba(16, 24, 40, 0.09);
+    --glass: rgba(255, 255, 255, 0.66);
+    --glass-strong: rgba(255, 255, 255, 0.82);
+    --blur: saturate(180%) blur(20px);
+    --header-bg: linear-gradient(135deg, #16202e 0%, #0e141f 100%);
     --header-text: #ffffff;
-    --radius-sm: 6px;
-    --radius-md: 10px;
+    --radius-sm: 9px;
+    --radius-md: 12px;
     --radius-lg: 16px;
     --transition: all 0.2s ease;
 }
 
 [data-theme="dark"],
 html[data-theme="dark"] {
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --bg-tertiary: #334155;
-    --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
-    --text-muted: #64748b;
-    --border-color: #334155;
-    --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    --card-shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4);
-    --header-bg: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+    --bg-primary: #0e141f;
+    --bg-secondary: #1a222f;
+    --bg-tertiary: #26313f;
+    --text-primary: #e4ebf5;
+    --text-secondary: #97a5ba;
+    --text-muted: #6c7b91;
+    --border-color: rgba(255, 255, 255, 0.09);
+    --accent-primary: #d98a3a;
+    --accent-secondary: #4a9eda;
+    --accent-hover: #c47a2c;
+    --success: #4cc38a;
+    --success-bg: rgba(76, 195, 138, 0.14);
+    --warning: #e8b64c;
+    --warning-bg: rgba(232, 182, 76, 0.16);
+    --danger: #e05c5c;
+    --danger-bg: rgba(224, 92, 92, 0.14);
+    --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --card-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.45);
+    --glass: rgba(26, 34, 47, 0.58);
+    --glass-strong: rgba(26, 34, 47, 0.82);
+    --blur: saturate(180%) blur(20px);
+    --header-bg: linear-gradient(135deg, #0a0f17 0%, #141019 100%);
 }
 
 @media (prefers-color-scheme: dark) {
     [data-theme="auto"] {
-        --bg-primary: #0f172a;
-        --bg-secondary: #1e293b;
-        --bg-tertiary: #334155;
-        --text-primary: #f1f5f9;
-        --text-secondary: #cbd5e1;
-        --text-muted: #64748b;
-        --border-color: #334155;
-        --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        --card-shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4);
-        --header-bg: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+        --bg-primary: #0e141f;
+        --bg-secondary: #1a222f;
+        --bg-tertiary: #26313f;
+        --text-primary: #e4ebf5;
+        --text-secondary: #97a5ba;
+        --text-muted: #6c7b91;
+        --border-color: rgba(255, 255, 255, 0.09);
+        --accent-primary: #d98a3a;
+        --accent-secondary: #4a9eda;
+        --accent-hover: #c47a2c;
+        --success: #4cc38a;
+        --success-bg: rgba(76, 195, 138, 0.14);
+        --warning: #e8b64c;
+        --warning-bg: rgba(232, 182, 76, 0.16);
+        --danger: #e05c5c;
+        --danger-bg: rgba(224, 92, 92, 0.14);
+        --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        --card-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.45);
+        --glass: rgba(26, 34, 47, 0.58);
+        --glass-strong: rgba(26, 34, 47, 0.82);
+        --blur: saturate(180%) blur(20px);
+        --header-bg: linear-gradient(135deg, #0a0f17 0%, #141019 100%);
     }
+}
+
+/* ---- Selectable accent themes ---------------------------------------------
+   The 291 palette carries several accents. Orange is the default (set in the
+   base blocks above and used when no data-accent is present). Each alternative
+   overrides the accent in BOTH light and dark, so whichever accent is chosen,
+   light and dark both keep working. Set data-accent on the root to switch. */
+
+[data-accent="gold"]   { --accent-primary: #d9a227; --accent-hover: #bd8b18; }
+[data-accent="blue"]   { --accent-primary: #2f7fd4; --accent-hover: #2569b3; }
+[data-accent="green"]  { --accent-primary: #2c9e6b; --accent-hover: #248257; }
+[data-accent="purple"] { --accent-primary: #8b6fc4; --accent-hover: #7458b0; }
+
+[data-theme="dark"][data-accent="gold"]   { --accent-primary: #e8b64c; --accent-hover: #d9a227; }
+[data-theme="dark"][data-accent="blue"]   { --accent-primary: #4a9eda; --accent-hover: #3f8ac5; }
+[data-theme="dark"][data-accent="green"]  { --accent-primary: #4cc38a; --accent-hover: #3faa76; }
+[data-theme="dark"][data-accent="purple"] { --accent-primary: #9b82d4; --accent-hover: #8a6fc9; }
+
+@media (prefers-color-scheme: dark) {
+    [data-theme="auto"][data-accent="gold"]   { --accent-primary: #e8b64c; --accent-hover: #d9a227; }
+    [data-theme="auto"][data-accent="blue"]   { --accent-primary: #4a9eda; --accent-hover: #3f8ac5; }
+    [data-theme="auto"][data-accent="green"]  { --accent-primary: #4cc38a; --accent-hover: #3faa76; }
+    [data-theme="auto"][data-accent="purple"] { --accent-primary: #9b82d4; --accent-hover: #8a6fc9; }
+}
+
+/* Accent picker swatches on the settings page. */
+.accent-swatches { display: flex; gap: 0.65rem; margin-top: 0.5rem; }
+.accent-swatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    cursor: pointer;
+    padding: 0;
+    transition: var(--transition);
+}
+.accent-swatch:hover { transform: scale(1.1); }
+.accent-swatch.active {
+    box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--accent-primary);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -64,9 +133,21 @@ html[data-theme="dark"] {
     transition: none !important;
 }
 
+/* The header is sticky and 64px tall, so a programmatic scroll to a target
+   ("N moved" / "N flagged" jumps to the table, an anchor) would otherwise land
+   with the target's top tucked under the header. Padding the scroll root by the
+   header height plus a little breathing room stops every such scroll just below
+   it. */
+html {
+    scroll-padding-top: 76px;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
-    background: var(--bg-secondary);
+    /* 291 style: a soft three-stop gradient across the page rather than a flat
+       fill, giving cards something to sit against. Fixed so it does not scroll. */
+    background: linear-gradient(160deg, var(--bg-secondary) 0%, var(--bg-tertiary) 55%, var(--bg-secondary) 100%);
+    background-attachment: fixed;
     color: var(--text-primary);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
@@ -106,6 +187,84 @@ a:hover { color: var(--accent-hover); }
 .logo {
     font-size: 2rem;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    /* Optical alignment: geometric centering leaves the mark reading a touch
+       high next to the wordmark, so nudge it down 1px. */
+    position: relative;
+    top: 1px;
+}
+
+/* Back-to-top button: the orangutan under a single upward chevron, in a soft
+   round button. Appears once the page is scrolled (.visible, toggled from JS)
+   and returns to the top when clicked; hidden and click-through until then. JS
+   sets its right offset so it always clears the scrollbar. */
+.scroll-top {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 200;
+    width: 54px;
+    height: 54px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    /* Soft, theme-aware fill: a touch of accent over the surface, so it reads as
+       a gentle button rather than a loud block. */
+    background: color-mix(in srgb, var(--accent-primary) 15%, var(--bg-secondary));
+    box-shadow: 0 6px 16px -4px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(14px) scale(0.95);
+    transition: opacity 0.25s ease, transform 0.25s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    pointer-events: none;
+}
+
+.scroll-top.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.scroll-top:hover {
+    border-color: var(--accent-primary);
+    background: color-mix(in srgb, var(--accent-primary) 24%, var(--bg-secondary));
+    box-shadow: 0 9px 20px -5px rgba(0, 0, 0, 0.42);
+    transform: translateY(-2px) scale(1.03);
+}
+
+/* A single upward chevron above the mascot: a clean "up" cue, not a rank patch. */
+.scroll-top-chevron {
+    color: var(--accent-primary);
+    margin-bottom: -1px;
+    transition: transform 0.2s ease;
+}
+
+.scroll-top:hover .scroll-top-chevron {
+    transform: translateY(-2px);
+}
+
+/* The mascot has no animation of its own; it just rides the button's hover
+   lift so the whole button moves as one piece. */
+.scroll-top-logo {
+    display: block;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scroll-top,
+    .scroll-top-chevron {
+        transition: opacity 0.2s ease;
+    }
+    .scroll-top:hover .scroll-top-chevron {
+        transform: none;
+    }
+    .scroll-top.visible {
+        transform: none;
+    }
 }
 
 .header h1 {
@@ -145,6 +304,9 @@ a:hover { color: var(--accent-hover); }
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-sm);
     transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .theme-toggle:hover {
@@ -196,7 +358,9 @@ a:hover { color: var(--accent-hover); }
 
 /* Cards */
 .card {
-    background: var(--bg-primary);
+    background: var(--glass);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
     box-shadow: var(--card-shadow);
@@ -232,106 +396,385 @@ a:hover { color: var(--accent-hover); }
 /* Network Cards */
 .network-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.25rem;
-    /* Let each card take only the height its own content needs. Stretching
-       them to match the tallest leaves short cards, such as a disconnected
-       Tailscale, with a large empty area below the text. */
-    align-items: start;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+    /* Cards in the same row stretch to a shared height so their bottoms line
+       up instead of sitting at ragged levels. Each card then pushes its action
+       button to that shared bottom edge (see .net-scan / .tailscale-actions),
+       so a shorter card reads as intentional rather than half-empty. */
+    align-items: stretch;
 }
 
-.network-card {
-    position: relative;
-    overflow: hidden;
-}
-
-.network-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--accent-primary);
-}
-
-.network-card.tailscale::before {
-    background: var(--accent-secondary);
-}
-
-.network-name {
-    font-weight: 700;
-    font-size: 1.1rem;
-}
-
-.network-detail {
+.net-card {
+    background: var(--glass);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.1rem 1.2rem;
     display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    font-size: 0.9rem;
-    border-bottom: 1px dashed var(--border-color);
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: var(--transition);
 }
 
-.network-detail:last-child {
-    border-bottom: none;
+.net-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-lg);
+    border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--border-color));
 }
 
-.network-detail .label {
-    color: var(--text-muted);
-    font-weight: 500;
+.net-card-top {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
 }
 
-.network-detail .value {
-    font-family: 'SF Mono', 'Fira Code', monospace;
+/* Accent-tinted icon chip replaces the old full-width stripe on top of the
+   card: it carries the same colour cue with far less visual weight. */
+.net-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+    color: var(--accent-primary);
+}
+
+.net-card.tailscale .net-icon {
+    background: color-mix(in srgb, var(--accent-secondary) 14%, transparent);
+    color: var(--accent-secondary);
+}
+
+.net-name {
+    font-weight: 600;
+    font-size: 1rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    /* Network names are short, meaningful labels (e.g. "Tailscale VPN", which
+       we feature as native), so wrap to a second line rather than truncating.
+       A featured name must never be cut down to "Tailscal...". */
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+}
+
+/* Keep the status badge at its natural size so it never steals room from the
+   name or gets squeezed itself. */
+.net-card-top .status-badge {
+    flex: 0 0 auto;
+}
+
+/* The old label/value rows became a single inline meta line: less vertical
+   space, no dashed spec-sheet look. */
+.net-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
     font-size: 0.85rem;
     color: var(--text-secondary);
 }
 
-/* Stats Bar */
-.stats-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 1.25rem;
+.net-meta-muted {
+    color: var(--text-muted);
+    font-size: 0.8rem;
 }
 
-.stat-card {
-    background: var(--bg-primary);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    box-shadow: var(--card-shadow);
+.net-sep {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.net-mono {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+}
+
+.net-scan {
+    align-self: flex-start;
+}
+
+/* On a plain network card the scan button is the footer: push it to the card's
+   bottom edge so buttons line up across cards of differing content height. */
+.net-card > .net-scan {
+    margin-top: auto;
+}
+
+/* Stat strip: one slim summary row that replaces the four boxed stat cards,
+   freeing the vertical space they used to eat for four numbers. The counts sit
+   on the left; a security summary and last-scan time fill the right so the bar
+   never reads as a half-empty pill. */
+.stat-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    padding: 0.7rem 1.2rem;
+    background: var(--glass);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
     border: 1px solid var(--border-color);
-    text-align: center;
-    transition: var(--transition);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--card-shadow);
 }
 
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--card-shadow-lg);
+/* The holder wraps the strip and carries its spacing, so that when the strip is
+   lifted out (position: fixed) to dock into the header, the holder can hold the
+   vacated height and the page never jumps. */
+.stat-strip-holder {
+    margin-bottom: 2rem;
 }
 
-.stat-icon {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
+/* Scroll-dock: on wide screens the summary strip pins up into the header's
+   empty middle as the page scrolls. app.js adds .docked once it reaches the
+   header; it pops into a compact, transparent, light-text state so the dark
+   header band stays one unbroken colour. The glass AND its blur are dropped
+   entirely while docked, otherwise the blur would frost the header and read as
+   a pale bar over it. */
+/* Scroll-dock (wide screens): when the strip scrolls up and its top touches the
+   header, app.js adds .strip-docked to <body>. The strip then lifts to
+   position: fixed in the header band, transparent and light, so it reads as
+   part of the header. It snaps in the instant it touches, so the glass bar is
+   never drawn over the header on the way in. Everything is driven by the body
+   class and matched by selector, so the strip is never moved or referenced and
+   an auto-refresh that swaps it out cannot break the effect. The holder holds
+   the vacated height so the page does not jump. */
+@media (min-width: 1100px) {
+    body.strip-docked .stat-strip-holder {
+        height: var(--strip-h, 52px);
+    }
+
+    body.strip-docked .stat-strip {
+        position: fixed;
+        top: 8px;
+        /* Bounded between the logo and the nav (set from JS) so the docked
+           strip never slides under either, whatever the monitor width or
+           whether a "Sign out" link widens the nav. */
+        left: var(--dock-left, 0);
+        right: var(--dock-right, 0);
+        width: auto;
+        margin: 0;
+        z-index: 101; /* above the header (100) */
+        transform: scale(0.92);
+        transform-origin: top center;
+        background: transparent;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        border-color: transparent;
+        box-shadow: none;
+        justify-content: center;
+        color: var(--header-text);
+        /* Transparent display over the header, so clicks reach the nav under it. */
+        pointer-events: none;
+        /* Stay on a single line inside the header band, never wrap to two rows. */
+        flex-wrap: nowrap;
+        gap: 0.9rem;
+    }
+    body.strip-docked .stat-strip-main,
+    body.strip-docked .stat-strip-meta {
+        flex-wrap: nowrap;
+    }
+    /* When the docked strip is short of room beside the nav, drop the least
+       important pieces first: the scanned/Live line (also shown at the table
+       toolbar and footer), then the status chips. app.js measures the actual
+       fit and toggles these, so there is no arbitrary width breakpoint. */
+    body.strip-docked.dock-hide-scan .stat-scan {
+        display: none;
+    }
+    body.strip-docked.dock-hide-meta .stat-strip-meta {
+        display: none;
+    }
+    body.strip-docked .stat-strip .stat-num { color: var(--header-text); }
+    body.strip-docked .stat-strip .stat-num.online { color: var(--success); }
+    body.strip-docked .stat-strip .stat-cap,
+    body.strip-docked .stat-strip .stat-scan {
+        color: color-mix(in srgb, var(--header-text) 62%, transparent);
+    }
+    body.strip-docked .stat-strip .stat-sep {
+        background: color-mix(in srgb, var(--header-text) 30%, transparent);
+    }
+    body.strip-docked .stat-strip .stat-chip {
+        background: transparent;
+        border-color: color-mix(in srgb, currentColor 42%, transparent);
+    }
 }
 
-.stat-value {
-    font-size: 2.5rem;
-    font-weight: 800;
-    display: block;
+.stat-strip-main,
+.stat-strip-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.stat-strip-main { gap: 0.5rem 1.25rem; }
+.stat-strip-meta { gap: 0.5rem 0.75rem; }
+
+/* Small pill summarising a class of finding (security, moved). Coloured by
+   severity, and calm green when there is nothing to flag. */
+.stat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    /* Less padding on the left than the right: the leading icon's SVG box
+       carries its own transparent space, so equal padding makes the left read
+       roomier and the text sit tight against the right. */
+    padding: 0.2rem 0.6rem 0.2rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.stat-chip svg { flex: 0 0 auto; }
+
+.stat-chip-ok {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+    border-color: color-mix(in srgb, var(--success) 30%, transparent);
+}
+
+.stat-chip-danger {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
+.stat-chip-warn {
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+}
+
+/* Flagged / moved chips are clickable: they filter the device list to just
+   those devices, so the number is not a dead end. */
+.stat-chip-filter {
+    cursor: pointer;
+    user-select: none;
+}
+
+.stat-chip-filter:hover {
+    filter: brightness(0.97);
+}
+
+.stat-chip-filter.active {
+    box-shadow: 0 0 0 2px currentColor;
+}
+
+.stat-chip-filter:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px currentColor;
+}
+
+/* The docked strip is click-through (pointer-events: none) so the header nav
+   stays reachable, but the filter chips must still be clickable up there. */
+body.strip-docked .stat-strip .stat-chip-filter {
+    pointer-events: auto;
+}
+
+/* "Live" cue shown wherever the last-scan time appears when the server is
+   re-scanning on its own, so the timestamp does not read as stale. */
+.live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    color: var(--success);
+    font-weight: 600;
+}
+
+.live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: livePulse 2.2s ease-out infinite;
+}
+
+@keyframes livePulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent); }
+    70%  { box-shadow: 0 0 0 6px color-mix(in srgb, var(--success) 0%, transparent); }
+    100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 0%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .live-dot { animation: none; }
+}
+
+.live-sep {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+/* Lay out the "Live" pill, its separator, and the scan time in a row so hiding
+   the pill leaves no orphan separator. */
+.stat-scan,
+.table-scanned,
+.table-footer-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* The "Live" cue only means anything while the view is actually auto-refreshing.
+   app.js toggles .live-view on <html> from the Auto-refresh switch; with it off,
+   the pill and its separator hide, leaving just the last-scan time. */
+:root:not(.live-view) .live-indicator,
+:root:not(.live-view) .live-sep {
+    display: none;
+}
+
+.stat-scan {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.stat-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.stat-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    align-self: center;
+    background: var(--text-muted);
+}
+
+.stat-dot.dot-online { background: var(--success); }
+
+.stat-dot.dot-offline {
+    background: transparent;
+    border: 1.5px solid var(--text-muted);
+    width: 7px;
+    height: 7px;
+}
+
+.stat-num {
+    font-size: 1.35rem;
+    font-weight: 700;
     line-height: 1;
-    margin-bottom: 0.25rem;
+    letter-spacing: -0.01em;
 }
 
-.stat-value.online { color: var(--success); }
-.stat-value.warning { color: var(--warning); }
-.stat-value.danger { color: var(--danger); }
+.stat-num.online { color: var(--success); }
 
-.stat-label {
-    font-size: 0.85rem;
+.stat-cap {
+    font-size: 0.82rem;
     color: var(--text-muted);
     font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+}
+
+.stat-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--border-color);
 }
 
 /* Status Badges */
@@ -344,6 +787,59 @@ a:hover { color: var(--accent-hover); }
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
+}
+
+/* Device type pill in the device list. Neutral by default so it reads as a
+   quiet label rather than competing with the status colours. */
+.type-cell {
+    white-space: nowrap;
+}
+
+.type-badge {
+    display: inline-flex;
+    align-items: center;
+    /* Align the badge to the same middle line the web/moved/risk indicators use,
+       so an icon and anything beside it in the cell sit on one centre line rather
+       than the badge dropping to the text baseline. */
+    vertical-align: middle;
+    gap: 0.3rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.type-icon {
+    flex: 0 0 auto;
+    opacity: 0.85;
+}
+
+.web-indicator {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-left: 0.35rem;
+    color: var(--text-muted);
+}
+
+/* A device that has changed IP: worth a subtle nudge, so it uses the warning
+   colour and a tooltip listing where it used to be. */
+.moved-indicator {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-left: 0.35rem;
+    color: var(--warning);
+}
+
+/* A device exposing an insecure service: the strongest cue in the list, in the
+   danger colour, with the specific concern in the tooltip. */
+.risk-indicator {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-left: 0.35rem;
+    color: var(--danger);
 }
 
 .status-badge.online {
@@ -363,9 +859,14 @@ a:hover { color: var(--accent-hover); }
 
 /* Table */
 .table-container {
-    background: var(--bg-primary);
+    background: var(--glass);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
     border-radius: var(--radius-lg);
-    overflow: hidden;
+    /* Safety net only: the fixed table layout and the responsive column-hiding
+       below keep the table within this panel at every width, so this never
+       actually scrolls in normal use. The page body never scrolls sideways. */
+    overflow-x: auto;
     box-shadow: var(--card-shadow);
     border: 1px solid var(--border-color);
 }
@@ -409,15 +910,158 @@ a:hover { color: var(--accent-hover); }
     color: var(--text-secondary);
 }
 
+/* Data-freshness note in the top toolbar, mirroring the one in the footer, so
+   the "last scanned" time is visible without scrolling to the bottom. */
+.table-scanned {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Key for the Status column colours. Kept quiet (footer, muted) so it explains
+   the dots without competing with the data. */
+.status-legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    color: var(--text-muted);
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+.legend-dot.online { background: var(--success); }
+.legend-dot.seen { background: var(--warning); }
+.legend-dot.offline {
+    background: transparent;
+    border: 1.5px solid var(--text-muted);
+    width: 7px;
+    height: 7px;
+}
+
+/* Value cells you can click to copy get a pointer. Empty ones carry
+   data-copy="" (a placeholder like "Unknown") and stay a normal cursor. */
+td[data-copy]:not([data-copy=""]) {
+    cursor: pointer;
+}
+
+/* In-place reveal for a truncated table cell (hostname, vendor, label). Rather
+   than a floating bubble, it sits exactly over the cell's own text and grows to
+   the right, so the "..." appears to expand in place into the full value. One
+   element at the body level driven by app.js (which copies the cell's font,
+   colour and left padding so the overlap is seamless); it shows instantly on
+   hover (no native `title` delay) and is not clipped by the cell's overflow.
+   The row-coloured background and a soft shadow lift the overflow so it stays
+   readable over the neighbouring columns. */
+#cell-tip {
+    position: fixed;
+    z-index: 300;
+    display: none;
+    align-items: center;
+    box-sizing: border-box;
+    white-space: nowrap;
+    max-width: 92vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: var(--bg-secondary);
+    border-radius: 5px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.16);
+    pointer-events: none;
+}
+
+#cell-tip.show {
+    display: inline-flex;
+}
+
+/* Instant tooltip for small indicators (moved, risk, web interface, notes).
+   One element at the body level driven by app.js off a data-tip attribute, so
+   these show immediately on hover instead of waiting out the native title
+   delay, and are positioned above the icon. */
+#hint-tip {
+    position: fixed;
+    z-index: 400;
+    max-width: 300px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    font-weight: 400;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--card-shadow-lg);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+    display: none;
+}
+
+#hint-tip.show {
+    display: block;
+}
+
 .table {
     width: 100%;
     border-collapse: collapse;
+    /* Fixed layout makes the columns share the panel width and hold their
+       place, so no combination of long hostnames, vendors or MAC strings can
+       push the table wider than its container. Overlong values truncate within
+       their own column. */
+    table-layout: fixed;
 }
 
 .table th, .table td {
-    padding: 1rem 1.25rem;
+    padding: 0.7rem 0.65rem;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
+    /* With fixed layout, keep every cell's content inside its column: nothing
+       may spill out and widen the row. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Column widths for the fixed layout (they sum to 100%). When the responsive
+   rules further down hide a column, its share is redistributed across the
+   rest, so the table always fills its panel exactly. */
+.table th:nth-child(1),  .table td:nth-child(1)  { width: 6%; }   /* Status (just a dot) */
+.table th:nth-child(2),  .table td:nth-child(2)  { width: 12%; }  /* IP       */
+.table th:nth-child(3),  .table td:nth-child(3)  { width: 13%; }  /* Hostname */
+.table th:nth-child(4),  .table td:nth-child(4)  { width: 10%; }  /* Type     */
+.table th:nth-child(5),  .table td:nth-child(5)  { width: 13%; }  /* MAC      */
+.table th:nth-child(6),  .table td:nth-child(6)  { width: 10%; }  /* Vendor   */
+.table th:nth-child(7),  .table td:nth-child(7)  { width: 5%; }   /* Label (just an icon) */
+.table th:nth-child(8),  .table td:nth-child(8)  { width: 11%; }  /* Group (dropdown needs room) */
+.table th:nth-child(9),  .table td:nth-child(9)  { width: 10%; }  /* Last Seen*/
+.table th:nth-child(10), .table td:nth-child(10) { width: 10%; }  /* Actions (two icons) */
+
+/* Single-line cells that should truncate rather than wrap. The group select
+   fills its column so it never forces the row wider. */
+.ip-cell, .mac-cell, .time-cell { white-space: nowrap; }
+.group-select { width: 100%; max-width: 100%; }
+
+/* The Actions cell holds icon buttons, not text: it must never show a text
+   ellipsis in place of the delete button. The `.table td` selector above is
+   more specific than a lone class, so this qualifies with `.table td` to win
+   and turns the ellipsis off, letting both buttons show. */
+.table td.actions-cell { white-space: nowrap; text-overflow: clip; overflow: visible; }
+
+/* Keep the table inside its panel with no horizontal scroll: the two free-text
+   columns truncate with an ellipsis rather than forcing the table wider. */
+.hostname-cell, .vendor-cell {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .table th {
@@ -438,7 +1082,7 @@ a:hover { color: var(--accent-hover); }
 }
 
 .table th .sort-icon {
-    margin-left: 0.5rem;
+    margin-left: 0.3rem;
     opacity: 0.5;
 }
 
@@ -535,6 +1179,12 @@ a:hover { color: var(--accent-hover); }
 .label-cell {
     font-weight: 500;
     color: var(--accent-primary);
+    /* Labels are free text, so cap and truncate them like hostname and vendor
+       so a long one can never stretch the table past its panel. */
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .notes-indicator {
@@ -582,7 +1232,7 @@ a:hover { color: var(--accent-hover); }
 /* Forms */
 .input, .select {
     padding: 0.65rem 1rem;
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     background: var(--bg-primary);
     color: var(--text-primary);
@@ -608,7 +1258,9 @@ a:hover { color: var(--accent-hover); }
 .input:focus, .select:focus {
     outline: none;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+    /* Tinted to the active accent rather than a fixed colour, so the focus ring
+       follows whichever accent theme is chosen. */
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 22%, transparent);
 }
 
 .input::placeholder {
@@ -622,6 +1274,13 @@ a:hover { color: var(--accent-hover); }
     background-repeat: no-repeat;
     background-position: 0.75rem center;
     background-size: 1.25rem;
+}
+
+/* The Notes field in the edit-device dialog is the only textarea. Allow it to
+   grow taller but not wider: a horizontal drag would blow out the dialog
+   layout. */
+textarea.input {
+    resize: vertical;
 }
 
 .form-group {
@@ -646,7 +1305,7 @@ a:hover { color: var(--accent-hover); }
 /* Buttons */
 .btn {
     padding: 0.65rem 1.25rem;
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     background: var(--bg-primary);
     color: var(--text-primary);
@@ -753,7 +1412,10 @@ a:hover { color: var(--accent-hover); }
 }
 
 .modal-content {
-    background: var(--bg-primary);
+    background: var(--glass-strong);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     width: 90%;
     max-width: 480px;
@@ -850,7 +1512,9 @@ a:hover { color: var(--accent-hover); }
     top: 80px;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--bg-primary);
+    background: var(--glass-strong);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
     padding: 1rem 1.75rem;
     border-radius: var(--radius-lg);
     box-shadow: 0 10px 40px rgba(0,0,0,0.15);
@@ -989,6 +1653,12 @@ a:hover { color: var(--accent-hover); }
     background: var(--success);
 }
 
+/* Visible keyboard focus for the switch (it is a div role="switch"). */
+.toggle-switch:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
 .toggle-switch::after {
     content: '';
     position: absolute;
@@ -1016,7 +1686,9 @@ a:hover { color: var(--accent-hover); }
     top: 100%;
     right: 0;
     margin-top: 0.5rem;
-    background: var(--bg-primary);
+    background: var(--glass-strong);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     box-shadow: var(--card-shadow-lg);
@@ -1068,22 +1740,165 @@ a:hover { color: var(--accent-hover); }
 /* Responsive */
 @media (max-width: 1024px) {
     .main { padding: 1.5rem; }
-    .network-cards { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
-    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Tablets only (phones switch to the card layout below): drop the widest
+   optional columns (Vendor, Label) so the rest keep room without cramming. */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .table th:nth-child(6), .table td:nth-child(6),
+    .table th:nth-child(7), .table td:nth-child(7) { display: none; }
+}
+
+/* Discovered-devices toolbar: on a full desktop the section title sits on one
+   line with its controls (continuous-scan toggle, search, the two filters,
+   Export, Scan All) beside it. Below ~1150px those controls no longer fit next
+   to the title and wrap into three or four ragged rows. Instead, drop them onto
+   their own full-width row under the title and let the search field flex to
+   absorb the slack, so the controls stay on one tidy line down to phone widths.
+   The desktop layout above this width is left untouched. */
+@media (max-width: 1150px) {
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .section-actions {
+        flex-wrap: wrap;
+    }
+    .search-input {
+        flex: 1 1 240px;
+        width: auto;
+        min-width: 200px;
+    }
+}
+
+/* Summary strip: below full desktop width the horizontal bar's stats and status
+   chips can wrap onto two ragged rows, and where exactly depends on the content
+   (how many chips, how big the numbers), so any single "it wraps here" value is
+   fragile. Instead, well above the worst-case wrap (~1024px), the strip becomes
+   a tidy grid of bordered stat tiles with the chips and scan line beneath. On a
+   tablet the four stats sit in one clean row; on a phone they drop to the 2x2
+   grid. The horizontal bar is then only ever shown at desktop width, where it
+   always fits on one line. Kept on its own breakpoint, separate from the 768px
+   table-card one, so the strip restyles without dragging the device table into
+   card mode with it. */
+@media (max-width: 1024px) {
+    .stat-strip {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.85rem;
+        padding: 1rem;
+    }
+    .stat-strip-main {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.6rem;
+        width: 100%;
+    }
+    .stat-item {
+        gap: 0.45rem;
+        padding: 0.7rem 0.85rem;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+    }
+    .stat-sep { display: none; }
+    .stat-strip-meta {
+        justify-content: flex-start;
+        gap: 0.5rem;
+    }
+    /* Keep the status chips on the left but push the "Live / scanned X ago"
+       status to the right edge of the card. */
+    .stat-scan { margin-left: auto; }
+}
+
+/* Narrow enough that four tiles in a row would be too cramped: fall back to the
+   2x2 grid. */
+@media (max-width: 600px) {
+    .stat-strip-main {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 
 @media (max-width: 768px) {
     .header { padding: 0 1rem; }
     .header h1 { display: none; }
     .main { padding: 1rem; }
-    .section-header { flex-direction: column; align-items: stretch; }
-    .section-actions { justify-content: space-between; }
-    .table-container { overflow-x: auto; }
-    .table th, .table td { padding: 0.75rem; }
-    .search-input { width: 100%; }
-    .stat-card { padding: 1rem; }
-    .stat-value { font-size: 1.75rem; }
+    /* Let the toolbar controls wrap onto more lines instead of squeezing, and
+       give the search field its own full-width row above them. */
+    .section-actions { gap: 0.5rem; }
+    .search-input { flex-basis: 100%; }
     .toast { left: 1rem; right: 1rem; bottom: 1rem; }
+
+    /* A ten-column table cannot be read on a phone, so each device becomes its
+       own card: the header row is dropped and every cell shows its field name
+       (from data-label) beside its value. No horizontal scroll, every field
+       stays visible. */
+    .table, .table tbody { display: block; }
+    .table thead { display: none; }
+    .table .device-row {
+        display: block;
+        margin-bottom: 0.75rem;
+        padding: 0.1rem 0;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: var(--bg-secondary);
+        overflow: hidden;
+    }
+    .table .device-row td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        width: auto;
+        /* Lift the desktop truncation caps (hostname/vendor/label have a fixed
+           max-width) so every cell fills the card and its value aligns to the
+           right edge, consistently with IP, MAC and Last Seen. */
+        max-width: none;
+        padding: 0.5rem 0.9rem;
+        border-bottom: 1px solid var(--border-color);
+        text-align: right;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+    }
+    .table .device-row td:last-child { border-bottom: none; }
+    .table .device-row td::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        margin-right: auto;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
+    }
+    /* The group dropdown and the action buttons sit to the right of the label. */
+    .table .device-row .group-select { width: auto; min-width: 130px; }
+    .table .device-row .actions-cell { gap: 0.5rem; }
+
+    /* Each card carries its own surface, so drop the panel's glass background,
+       border and shadow and let the cards sit directly on the page. The toolbar
+       ("Showing N devices") and the footer legend lose their fills too, so they
+       read as page content rather than a boxed panel. */
+    .table-container {
+        background: transparent;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+        overflow: visible;
+    }
+    .table-toolbar {
+        background: transparent;
+        border-bottom: none;
+        padding: 0.25rem 0.15rem 0.85rem;
+    }
+    .table-footer {
+        background: transparent;
+        border-top: none;
+        padding: 0.85rem 0.15rem;
+    }
 }
 
 /* Copy Animation */
@@ -1233,18 +2048,6 @@ a:hover { color: var(--accent-hover); }
     flex-shrink: 0;
 }
 
-.stat-icon .icon {
-    color: var(--text-secondary);
-}
-
-.stat-icon-online .icon {
-    color: var(--success);
-}
-
-.stat-icon-offline .icon {
-    color: var(--text-muted);
-}
-
 .btn-icon .icon {
     color: var(--text-secondary);
     transition: var(--transition);
@@ -1314,7 +2117,9 @@ img.login-logo {
 
 /* Tailscale connect/disconnect */
 .tailscale-actions {
-    margin-top: 1rem;
+    /* Same footer treatment as a plain card's scan button: sink the Tailscale
+       action group (with its message line just below) to the card's bottom. */
+    margin-top: auto;
     display: flex;
     gap: 0.5rem;
 }
@@ -1329,4 +2134,211 @@ img.login-logo {
 
 .tailscale-message:empty {
     display: none;
+}
+
+/* ---- Scrollbar: slim and unobtrusive, tinted to the theme (291 style) ---- */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-muted) transparent;
+}
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+    background-clip: content-box;
+}
+
+/* No-JavaScript fallback: a full-screen, on-brand panel shown only when
+   scripting is disabled (the markup lives in a <noscript> block, so it never
+   appears when JS is on). It covers the otherwise non-functional dashboard with
+   a clear explanation and a safety note. Uses theme tokens so it matches light
+   and dark, and loads with the stylesheet regardless of JS. */
+.noscript-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: var(--bg-primary);
+    overflow: auto;
+}
+
+.noscript-card {
+    max-width: 780px;
+    width: 100%;
+    padding: 2rem 2.25rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--card-shadow-lg);
+    color: var(--text-secondary);
+    text-align: left;
+}
+
+/* Header: logo beside the title/intro, so the page does not open as one tall
+   centred column. */
+.noscript-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.noscript-logo {
+    flex: 0 0 auto;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+}
+
+.noscript-card h1 {
+    margin-bottom: 0.3rem;
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+
+.noscript-sub {
+    line-height: 1.5;
+}
+
+.noscript-card p {
+    line-height: 1.55;
+}
+
+/* Two side-by-side choices (dashboard vs CLI); stacks on narrow screens. */
+.noscript-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+@media (max-width: 640px) {
+    .noscript-cols {
+        grid-template-columns: 1fr;
+    }
+}
+
+.noscript-panel {
+    padding: 1.1rem 1.2rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.noscript-panel h2 {
+    margin-bottom: 0.6rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.noscript-panel p {
+    margin-bottom: 0.6rem;
+}
+
+.noscript-panel ul {
+    margin: 0 0 0.7rem 1.1rem;
+    line-height: 1.55;
+}
+
+.noscript-panel li {
+    margin-bottom: 0.2rem;
+}
+
+.noscript-action {
+    margin-bottom: 0 !important;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.noscript-action-muted {
+    margin-bottom: 0 !important;
+    font-size: 0.9em;
+}
+
+.noscript-cli {
+    margin: 0 0 0.7rem;
+    padding: 0.75rem 0.85rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+}
+
+.noscript-cli code {
+    display: block;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+    white-space: pre;
+    background: none;
+    padding: 0;
+}
+
+.noscript-safety {
+    padding: 0.8rem 1rem;
+    background: color-mix(in srgb, var(--accent-primary) 12%, var(--bg-primary));
+    border-left: 3px solid var(--accent-primary);
+    border-radius: var(--radius-md);
+}
+
+.noscript-safety strong {
+    color: var(--text-primary);
+}
+
+.noscript-card code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.85em;
+    background: var(--bg-tertiary);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+}
+
+.noscript-footer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.noscript-footer-logo {
+    flex: 0 0 auto;
+    opacity: 0.9;
+}
+
+.noscript-footer-name {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.noscript-footer-sep {
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.noscript-footer a {
+    color: var(--accent-primary);
+}
+
+.noscript-footer a:hover {
+    color: var(--accent-hover);
 }

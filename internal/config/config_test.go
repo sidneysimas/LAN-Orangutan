@@ -79,6 +79,35 @@ allow_insecure = true
 	}
 }
 
+func TestContinuousScanDefaultsOn(t *testing.T) {
+	if !Default().Scanning.ContinuousScan {
+		t.Error("continuous_scan should default to true")
+	}
+}
+
+func TestContinuousScanCanBeDisabled(t *testing.T) {
+	path := writeConfig(t, `
+[scanning]
+continuous_scan = false
+`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Scanning.ContinuousScan {
+		t.Error("continuous_scan = false in the file should disable it")
+	}
+}
+
+func TestContinuousScanEnvOverride(t *testing.T) {
+	t.Setenv("ORANGUTAN_CONTINUOUS_SCAN", "false")
+	cfg := Default()
+	cfg.ApplyEnv()
+	if cfg.Scanning.ContinuousScan {
+		t.Error("ORANGUTAN_CONTINUOUS_SCAN=false should disable continuous scan")
+	}
+}
+
 func TestIsLoopbackBind(t *testing.T) {
 	tests := []struct {
 		addr string
@@ -293,5 +322,61 @@ port = 4242
 	}
 	if cfg.Server.Port != 4242 {
 		t.Errorf("port = %d, want 4242", cfg.Server.Port)
+	}
+}
+
+func TestNormalizeClampsNonPositiveScanInterval(t *testing.T) {
+	c := Default()
+	c.Scanning.ContinuousScan = true
+	c.Scanning.ScanInterval = 0
+
+	notes := c.Normalize()
+
+	if c.Scanning.ScanInterval != defaultScanInterval {
+		t.Errorf("scan_interval = %d, want clamped to %d", c.Scanning.ScanInterval, defaultScanInterval)
+	}
+	if len(notes) == 0 {
+		t.Error("expected a warning note about scan_interval, got none")
+	}
+}
+
+func TestNormalizeClampsNonPositiveMinScanInterval(t *testing.T) {
+	c := Default()
+	c.Scanning.MinScanInterval = -5
+
+	notes := c.Normalize()
+
+	if c.Scanning.MinScanInterval != defaultMinScanInterval {
+		t.Errorf("min_scan_interval = %d, want clamped to %d", c.Scanning.MinScanInterval, defaultMinScanInterval)
+	}
+	if len(notes) == 0 {
+		t.Error("expected a warning note about min_scan_interval, got none")
+	}
+}
+
+func TestNormalizeClampsScanIntervalEvenWhenContinuousScanOff(t *testing.T) {
+	c := Default()
+	c.Scanning.ContinuousScan = false
+	c.Scanning.ScanInterval = 0
+
+	c.Normalize()
+
+	// Continuous scanning can be switched on at runtime from the UI, so the
+	// interval must always be valid even if it starts disabled.
+	if c.Scanning.ScanInterval != defaultScanInterval {
+		t.Errorf("scan_interval = %d, want clamped to %d", c.Scanning.ScanInterval, defaultScanInterval)
+	}
+}
+
+func TestNormalizeLeavesValidValuesAlone(t *testing.T) {
+	c := Default()
+
+	notes := c.Normalize()
+
+	if len(notes) != 0 {
+		t.Errorf("expected no warnings for default config, got %v", notes)
+	}
+	if c.Scanning.ScanInterval != defaultScanInterval || c.Scanning.MinScanInterval != defaultMinScanInterval {
+		t.Error("Normalize changed already-valid values")
 	}
 }

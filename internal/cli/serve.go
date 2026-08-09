@@ -47,6 +47,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// problem, not a usage error. Report it without the flag listing.
 	cmd.SilenceUsage = true
 
+	// Repair any out-of-range scan timings before they are used, so a config
+	// typo cannot silently switch off the background scanner or rate limiting.
+	for _, note := range cfg.Normalize() {
+		fmt.Fprintf(os.Stderr, "config: %s\n", note)
+	}
+
 	// Use flags or config
 	port := cfg.Server.Port
 	if servePort > 0 {
@@ -88,6 +94,18 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	webHandler := web.NewHandler(store, cfg, authn, Version)
 	apiHandler := api.NewHandler(store, cfg)
+
+	// Keep the device list current on its own: re-scan the detected networks
+	// every scan_interval seconds. Without this the list only changes when
+	// someone clicks Scan, so "auto-refresh" would only ever re-draw the same
+	// stored results. Cancelling scanCtx at shutdown stops the scheduler and
+	// cancels any scan already in flight. The ticker always runs so continuous
+	// scanning can be switched on and off from the UI at runtime; the scanner
+	// itself skips scans while the setting is off (default comes from config).
+	scanCtx, scanCancel := context.WithCancel(context.Background())
+	defer scanCancel()
+	apiHandler.SetScanContext(scanCtx)
+	apiHandler.StartBackgroundScanner(scanCtx, time.Duration(cfg.Scanning.ScanInterval)*time.Second)
 
 	// Protected routes.
 	mux.Handle("/api/", authn.Middleware(apiHandler))
@@ -133,6 +151,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	go func() {
 		<-quit
 		fmt.Println("\nShutting down server...")
+		scanCancel() // stop the background scanner promptly
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -141,6 +160,21 @@ func runServe(cmd *cobra.Command, args []string) error {
 		if err := server.Shutdown(ctx); err != nil {
 			fmt.Fprintf(os.Stderr, "Error shutting down: %v\n", err)
 		}
+
+		// scanCancel above cancels the context of any scan in flight, which
+		// kills its nmap child and lets the job return. Wait for that goroutine
+		// to unwind so we do not exit mid-write, bounded so a stuck scan cannot
+		// block shutdown forever.
+		scansDone := make(chan struct{})
+		go func() {
+			apiHandler.WaitForScans()
+			close(scansDone)
+		}()
+		select {
+		case <-scansDone:
+		case <-time.After(5 * time.Second):
+		}
+
 		close(done)
 	}()
 
@@ -179,7 +213,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// virtual gateway answers probes for addresses that do not exist. Say so
 	// before the user runs a scan and trusts the results.
 	if detected, err := network.DetectNetworks(); err == nil {
-		detected = network.WithConfigured(detected, cfg.Scanning.Networks)
+		detected = network.WithConfigured(detected, network.Filter{Configured: cfg.Scanning.Networks, Excluded: cfg.Scanning.ExcludeNetworks, OnlyConfigured: cfg.Scanning.OnlyConfiguredNetworks})
 		if warning := network.IsolationWarning(detected); warning != "" {
 			fmt.Println()
 			fmt.Println("  ┌─────────────────────────────────────────────────────────────┐")

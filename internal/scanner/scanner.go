@@ -18,12 +18,17 @@ import (
 // Scanner performs network scans
 type Scanner struct {
 	minInterval time.Duration
+	// serviceDetection turns on the opt-in probe that identifies devices by
+	// their open ports. Off by default; a scan stays a quiet ping sweep.
+	serviceDetection bool
 }
 
-// New creates a new Scanner
-func New(minIntervalSeconds int) *Scanner {
+// New creates a new Scanner. serviceDetection enables the opt-in port probe
+// used to identify devices more precisely.
+func New(minIntervalSeconds int, serviceDetection bool) *Scanner {
 	return &Scanner{
-		minInterval: time.Duration(minIntervalSeconds) * time.Second,
+		minInterval:      time.Duration(minIntervalSeconds) * time.Second,
+		serviceDetection: serviceDetection,
 	}
 }
 
@@ -99,6 +104,18 @@ func (s *Scanner) Scan(ctx context.Context, cidr string) (*types.ScanResult, err
 				Timestamp: time.Now(),
 			}, nil
 		}
+	}
+
+	// Recover names for devices that reverse DNS could not name, over NetBIOS.
+	// This is name resolution like the reverse DNS lookup above, so it always
+	// runs, and only touches devices that still have no hostname.
+	fillWindowsNames(ctx, devices)
+
+	// With service detection on, probe each device's well-known ports to refine
+	// its type and flag a web interface. This is the only step that sends more
+	// than a ping or a name query, so it stays behind the opt-in flag.
+	if s.serviceDetection {
+		enrichWithServices(ctx, devices)
 	}
 
 	duration := time.Since(startTime).Seconds()
@@ -207,6 +224,11 @@ func (s *Scanner) scanWithNmap(ctx context.Context, cidr string) ([]types.Device
 			}
 		}
 
+		// Infer the device type from the vendor and hostname. Port signals are
+		// not available here yet; a ping scan finds no open ports. Opt-in
+		// service detection will pass them in a later step.
+		device.Type = Classify(device.Vendor, device.Hostname, nil)
+
 		devices = append(devices, device)
 	}
 
@@ -271,6 +293,8 @@ func (s *Scanner) scanWithArpScan(ctx context.Context, cidr string) ([]types.Dev
 
 		// Try reverse DNS
 		device.Hostname = reverseDNS(ip)
+
+		device.Type = Classify(device.Vendor, device.Hostname, nil)
 
 		devices = append(devices, device)
 	}

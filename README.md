@@ -10,7 +10,7 @@
 </p>
 
 
-<a href="https://trendshift.io/repositories/17888?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17888" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17888/daily?language=Go" alt="291-Group%2FLAN-Orangutan | Trendshift" width="250" height="55"/></a>&nbsp;&nbsp;<a href="https://www.producthunt.com/products/lan-orangutan?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-lan-orangutan" target="_blank" rel="noopener noreferrer"><img alt="LAN Orangutan - Try LAN Orangutan, our all new lightweight network scanner. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1203757&amp;theme=dark&amp;t=1784746217551"></a>
+<a href="https://trendshift.io/repositories/17888?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17888" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17888/daily?language=Go" alt="291-Group%2FLAN-Orangutan | Trendshift" width="250" height="55"/></a>
 
 **Self-hosted network discovery for homelabbers with Tailscale support.**
 
@@ -162,7 +162,7 @@ The web dashboard provides:
 - Labels and notes for each device
 - Search and filter devices
 - Export to CSV/JSON
-- Auto-refresh option
+- Continuous scanning you can toggle on or off, keeping the view live
 - Keyboard shortcuts (/ to search, R to refresh, T to toggle theme)
 
 ### Scan progress
@@ -181,6 +181,8 @@ Only peers that are currently online are listed, and they are shown with their T
 
 You can also control Tailscale from the app. The dashboard and settings pages show whether Tailscale is connected, with a button to connect or disconnect. If the machine still needs to sign in, the app shows you the sign-in link to open. Disconnecting warns you first, since you might be reaching the dashboard over Tailscale itself. This needs the Tailscale CLI on the machine running LAN Orangutan.
 
+**Tailscale needs a host install, not Docker.** These features rely on the Tailscale CLI being present where LAN Orangutan runs. In the standard Docker setup the container has its own filesystem and cannot see the host's Tailscale, so the card will read "Not Installed" even when the host is on your tailnet. To use Tailscale with LAN Orangutan, run the binary directly on the host rather than in a container.
+
 ## Security
 
 LAN Orangutan listens on your network by default, because it is normally installed on a server or a Raspberry Pi and opened from another machine. To make that safe, it shows you nothing until a password exists.
@@ -188,6 +190,8 @@ LAN Orangutan listens on your network by default, because it is normally install
 **First run.** Opening the dashboard presents a "create a password" screen. Until you finish it, every page and every API endpoint is refused. There is no default password and none is generated for you. What you choose is stored as a bcrypt hash in a file readable only by its owner, never in plain text, and separately from your config file so setup never rewrites a file you maintain by hand.
 
 **Signing in.** After that you sign in with that password and stay signed in for a week by default. Sign out is in the header. Five wrong guesses lock that address out for fifteen minutes.
+
+**Forgot your password?** Because LAN Orangutan is self-hosted, you own the machine, so there is always a way back in. The password is a single bcrypt hash in a file named `auth` inside your data directory (`data/auth` next to the Docker Compose file, or the `data_dir` you configured). Delete that file and restart LAN Orangutan; the dashboard returns to the "create a password" screen and you set a new one. Your discovered devices, labels and settings live in separate files and are left untouched. (There is no email reset and no recovery question by design: the app has no account system and sends nothing off the machine.)
 
 **Keeping it private instead.** Set `bind_address = 127.0.0.1` and the dashboard is only reachable from the machine it runs on. No password is asked for, because nobody else can reach it.
 
@@ -200,7 +204,7 @@ ORANGUTAN_PASSWORD=your-password orangutan serve
 ORANGUTAN_PASSWORD_FILE=/run/secrets/orangutan orangutan serve
 ```
 
-**Turning authentication off.** If something else already controls access, such as a reverse proxy that handles login, set `allow_insecure = true` (or pass `--allow-insecure`). This disables password protection completely, so only do it when access control genuinely lives elsewhere.
+**Turning authentication off.** If something else already controls access, such as a reverse proxy that handles login, set `allow_insecure = true` (or pass `--allow-insecure`). This disables password protection completely, so only do it when access control genuinely lives elsewhere. On a network bind (`0.0.0.0`) that means anyone who can route to the host can not only read your device list but also delete devices and connect or disconnect Tailscale, all without signing in. Never combine `allow_insecure` with a network bind unless a proxy or firewall in front of it is doing the authentication.
 
 There is no HTTPS built in, so put LAN Orangutan behind a reverse proxy or reach it over Tailscale if you need the connection encrypted. See [SECURITY.md](SECURITY.md) for the full picture, the known limitations, and how to report a vulnerability.
 
